@@ -43,9 +43,7 @@ CareerPilot AI is a full-stack AI-powered career assistant platform that helps u
 
 ![Interview Report](./screenshots/report.png)
 
-## Resume PDF
 
-![Resume PDF](./screenshots/resume.png)
 
 ---
 
