@@ -1,0 +1,154 @@
+// Skill Gaps Component Styles
+.skill-gaps-card {
+    background: linear-gradient(135deg, #1c2230 0%, #161b22 100%);
+    border: 1px solid #2a3348;
+    border-radius: 12px;
+    padding: 28px;
+    margin: 24px 0;
+
+    h2 {
+        margin: 0 0 8px 0;
+        color: #e6edf3;
+        font-size: 1.5rem;
+        font-weight: 700;
+    }
+
+    .subtitle {
+        color: #7d8590;
+        margin: 0 0 24px 0;
+        font-size: 0.95rem;
+    }
+}
+
+.gaps-section {
+    margin-bottom: 32px;
+
+    &:last-child {
+        margin-bottom: 0;
+    }
+}
+
+.gaps-section__title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 0 0 16px 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+
+    &--high {
+        color: #ff6b6b;
+    }
+
+    &--medium {
+        color: #ffd93d;
+    }
+
+    &--low {
+        color: #6bcf7f;
+    }
+}
+
+.severity-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+
+    &--high {
+        background: rgba(255, 45, 120, 0.15);
+        color: #ff2d78;
+    }
+
+    &--medium {
+        background: rgba(255, 183, 30, 0.15);
+        color: #ffb71e;
+    }
+
+    &--low {
+        background: rgba(16, 185, 129, 0.15);
+        color: #10b981;
+    }
+}
+
+.gaps-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.gap-item {
+    background: rgba(30, 37, 53, 0.5);
+    border: 1px solid #2a3348;
+    border-radius: 8px;
+    padding: 16px;
+    transition: all 0.2s;
+    cursor: default;
+
+    &:hover {
+        border-color: #3d4b64;
+        background: rgba(30, 37, 53, 0.8);
+        transform: translateY(-2px);
+    }
+
+    &--high {
+        border-left: 4px solid #ff2d78;
+
+        &:hover {
+            border-left-color: #ff6b9d;
+        }
+    }
+
+    &--medium {
+        border-left: 4px solid #ffb71e;
+
+        &:hover {
+            border-left-color: #ffc94d;
+        }
+    }
+
+    &--low {
+        border-left: 4px solid #10b981;
+
+        &:hover {
+            border-left-color: #34d399;
+        }
+    }
+}
+
+.gap-item__header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.gap-item__icon {
+    font-size: 1.5rem;
+}
+
+.gap-item__skill {
+    color: #e6edf3;
+    font-weight: 600;
+    font-size: 0.95rem;
+    flex: 1;
+}
+
+.gap-item__description {
+    color: #7d8590;
+    font-size: 0.85rem;
+    margin: 0;
+    padding-left: 38px;
+}
+
+.no-data {
+    color: #7d8590;
+    text-align: center;
+    padding: 32px;
+    font-style: italic;
+}

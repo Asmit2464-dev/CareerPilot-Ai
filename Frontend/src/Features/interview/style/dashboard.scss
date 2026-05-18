@@ -1,0 +1,220 @@
+// Dashboard Page Styles
+.dashboard-page {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #0d1117 0%, #161b22 100%);
+    color: #e6edf3;
+    padding: 40px 20px;
+}
+
+.dashboard-header {
+    text-align: center;
+    margin-bottom: 50px;
+
+    h1 {
+        font-size: 2.5rem;
+        font-weight: 800;
+        margin: 0 0 12px 0;
+        background: linear-gradient(135deg, #ff2d78, #ff6b9d);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    p {
+        color: #7d8590;
+        font-size: 1.1rem;
+        margin: 0;
+    }
+}
+
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 24px;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.report-card {
+    background: linear-gradient(135deg, #1c2230 0%, #161b22 100%);
+    border: 1px solid #2a3348;
+    border-radius: 12px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+
+    &:hover {
+        border-color: #3d4b64;
+        box-shadow: 0 20px 40px rgba(255, 45, 120, 0.1);
+        transform: translateY(-8px);
+
+        .view-btn {
+            transform: translateX(4px);
+        }
+    }
+}
+
+.report-card__header {
+    padding: 20px;
+    border-bottom: 1px solid #2a3348;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+}
+
+.report-card__title {
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin: 0;
+    color: #e6edf3;
+    flex: 1;
+}
+
+.match-badge {
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 0.9rem;
+    white-space: nowrap;
+
+    &--high {
+        background: rgba(16, 185, 129, 0.15);
+        color: #10b981;
+    }
+
+    &--mid {
+        background: rgba(255, 183, 30, 0.15);
+        color: #ffb71e;
+    }
+
+    &--low {
+        background: rgba(255, 45, 120, 0.15);
+        color: #ff2d78;
+    }
+}
+
+.report-card__body {
+    padding: 20px;
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+}
+
+.stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+.stat__icon {
+    font-size: 2rem;
+    margin-bottom: 8px;
+}
+
+.stat__label {
+    color: #7d8590;
+    font-size: 0.8rem;
+    margin: 0 0 4px 0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.stat__value {
+    color: #e6edf3;
+    font-size: 1.8rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+.report-card__footer {
+    padding: 16px 20px;
+    background: rgba(30, 37, 53, 0.3);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.report-card__date {
+    color: #7d8590;
+    font-size: 0.9rem;
+    margin: 0;
+}
+
+.view-btn {
+    background: linear-gradient(135deg, #ff2d78, #ff6b9d);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s;
+
+    &:hover {
+        opacity: 0.9;
+    }
+}
+
+.empty-state {
+    text-align: center;
+    padding: 80px 40px;
+    background: linear-gradient(135deg, #1c2230 0%, #161b22 100%);
+    border: 2px dashed #2a3348;
+    border-radius: 12px;
+    max-width: 400px;
+    margin: 0 auto;
+}
+
+.empty-state__icon {
+    font-size: 4rem;
+    display: block;
+    margin-bottom: 16px;
+}
+
+.empty-state h2 {
+    margin: 16px 0 8px 0;
+    color: #e6edf3;
+    font-size: 1.5rem;
+}
+
+.empty-state p {
+    color: #7d8590;
+    margin: 0 0 24px 0;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #ff2d78, #ff6b9d);
+    color: white;
+    border: none;
+    padding: 12px 32px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: transform 0.2s;
+
+    &:hover {
+        transform: scale(1.05);
+    }
+}
+
+@media (max-width: 768px) {
+    .dashboard-header h1 {
+        font-size: 2rem;
+    }
+
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+
+    .report-card__body {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+}

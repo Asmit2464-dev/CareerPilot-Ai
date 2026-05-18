@@ -1,0 +1,25 @@
+# Dependencies
+node_modules
+Frontend/node_modules
+Backend/node_modules
+
+# Environment files
+.env
+Frontend/.env
+Backend/.env
+
+# Build folders
+dist
+build
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# VS Code
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
