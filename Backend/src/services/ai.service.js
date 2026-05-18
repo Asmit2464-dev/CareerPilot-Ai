@@ -344,9 +344,14 @@ async function generatePdfFromHtml(htmlContent) {
     let browser
 
     try {
-        browser = await puppeteer.launch({
-            args: [ "--no-sandbox", "--disable-setuid-sandbox" ]
-        })
+   browser = await puppeteer.launch({
+    headless: "new",
+    executablePath: puppeteer.executablePath(),
+    args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox"
+    ]
+})
         const page = await browser.newPage()
         await page.setContent(htmlContent, { waitUntil: "networkidle0", timeout: 30000 })
 
