@@ -1,8 +1,9 @@
 import axios from "axios"
+import { API_BASE_URL } from "../../../config/api"
 
 
 const api = axios.create({
-    baseURL: "https://careerpilot-ai-zhgz.onrender.com",
+    baseURL: API_BASE_URL,
     withCredentials: true
 })
 
@@ -47,7 +48,7 @@ export async function logout() {
         return response.data
 
     } catch (err) {
-
+        console.log(err)
     }
 }
 

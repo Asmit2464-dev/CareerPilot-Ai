@@ -1,9 +1,18 @@
 import axios from "axios";
+import { API_BASE_URL } from "../../../config/api";
 
 const api = axios.create({
-    baseURL:  "https://careerpilot-ai-zhgz.onrender.com",
+    baseURL: API_BASE_URL,
     withCredentials: true,
 })
+
+const parseBlobErrorMessage = (message) => {
+    try {
+        return JSON.parse(message).message
+    } catch {
+        return null
+    }
+}
 
 
 /**
@@ -53,9 +62,30 @@ export const getAllInterviewReports = async () => {
  * @description Service to generate resume pdf based on user self description, resume content and job description.
  */
 export const generateResumePdf = async ({ interviewReportId }) => {
-    const response = await api.post(`/api/interview/resume/pdf/${interviewReportId}`, null, {
-        responseType: "blob"
-    })
+    try {
+        const response = await api.post(`/api/interview/resume/pdf/${interviewReportId}`, null, {
+            responseType: "blob"
+        })
 
-    return response.data
+        const contentType = response.headers["content-type"] || "application/pdf"
+        const disposition = response.headers["content-disposition"] || ""
+        const filenameMatch = disposition.match(/filename="?([^"]+)"?/i)
+
+        return {
+            blob: response.data,
+            contentType,
+            filename: filenameMatch?.[1] || `resume_${interviewReportId}.pdf`
+        }
+    } catch (error) {
+        const errorBlob = error.response?.data
+
+        if (errorBlob instanceof Blob) {
+            const message = await errorBlob.text()
+            const parsedMessage = parseBlobErrorMessage(message)
+
+            throw new Error(parsedMessage || message || "Failed to generate resume PDF.", { cause: error })
+        }
+
+        throw new Error(error.response?.data?.message || error.message || "Failed to generate resume PDF.", { cause: error })
+    }
 }

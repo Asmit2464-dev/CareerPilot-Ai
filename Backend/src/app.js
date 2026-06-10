@@ -3,15 +3,19 @@ const cookieParser = require("cookie-parser")
 const cors = require("cors")
 
 const app = express()
+const allowedOrigins = [
+    "http://localhost:5173",
+    "https://career-pilot-ai-sigma.vercel.app",
+    process.env.CLIENT_URL,
+    process.env.FRONTEND_URL
+].filter(Boolean)
 
 app.use(express.json())
 app.use(cookieParser())
 app.use(cors({
-    origin: [
-        "http://localhost:5173",
-        "https://career-pilot-ai-sigma.vercel.app"
-    ],
-    credentials: true
+    origin: allowedOrigins,
+    credentials: true,
+    exposedHeaders: [ "Content-Disposition", "Content-Type" ]
 }))
 
 /* require all the routes here */

@@ -129,7 +129,25 @@
 }
 
 .gap-item__icon {
-    font-size: 1.5rem;
+    width: 0.7rem;
+    height: 0.7rem;
+    border-radius: 50%;
+    flex-shrink: 0;
+
+    &--high {
+        background: #ff2d78;
+        box-shadow: 0 0 0 4px rgba(255, 45, 120, 0.12);
+    }
+
+    &--medium {
+        background: #ffb71e;
+        box-shadow: 0 0 0 4px rgba(255, 183, 30, 0.12);
+    }
+
+    &--low {
+        background: #10b981;
+        box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.12);
+    }
 }
 
 .gap-item__skill {
@@ -144,6 +162,28 @@
     font-size: 0.85rem;
     margin: 0;
     padding-left: 38px;
+    line-height: 1.5;
+}
+
+.gap-item__recommendation {
+    color: #c9d1d9;
+    font-size: 0.82rem;
+    margin: 0.6rem 0 0;
+    padding-left: 38px;
+    line-height: 1.5;
+}
+
+.gap-item__keyword {
+    display: inline-flex;
+    width: fit-content;
+    margin: 0.7rem 0 0 38px;
+    padding: 0.2rem 0.55rem;
+    border-radius: 0.35rem;
+    border: 1px solid rgba(125, 133, 144, 0.25);
+    color: #9ecbff;
+    background: rgba(56, 139, 253, 0.1);
+    font-size: 0.72rem;
+    font-weight: 700;
 }
 
 .no-data {

@@ -123,13 +123,24 @@ async function generateResumePdfController(req, res) {
             })
         }
 
-        const { resume, jobDescription, selfDescription } = interviewReport
+        const { resume, jobDescription, selfDescription, title, matchScore, skillGaps, preparationPlan } = interviewReport
 
-        const pdfBuffer = await generateResumePdf({ resume, jobDescription, selfDescription })
+        const pdfBuffer = await generateResumePdf({
+            resume,
+            jobDescription,
+            selfDescription,
+            title,
+            matchScore,
+            skillGaps,
+            preparationPlan
+        })
 
         res.set({
             "Content-Type": "application/pdf",
-            "Content-Disposition": `attachment; filename=resume_${interviewReportId}.pdf`
+            "Content-Disposition": `attachment; filename=resume_${interviewReportId}.pdf`,
+            "Content-Length": pdfBuffer.length,
+            "Content-Transfer-Encoding": "binary",
+            "Cache-Control": "no-store"
         })
 
         return res.send(pdfBuffer)

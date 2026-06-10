@@ -2,6 +2,7 @@ import { getAllInterviewReports, generateInterviewReport, getInterviewReportById
 import { useContext, useEffect } from "react"
 import { InterviewContext } from "../Interview.context.jsx"
 import { useParams } from "react-router"
+import Toast from "../../../toast.js"
 
 
 export const useInterview = () => {
@@ -17,9 +18,8 @@ export const useInterview = () => {
 
     const generateReport = async ({ jobDescription, selfDescription, resumeFile }) => {
         setLoading(true)
-        let response = null
         try {
-            response = await generateInterviewReport({ jobDescription, selfDescription, resumeFile })
+            const response = await generateInterviewReport({ jobDescription, selfDescription, resumeFile })
             if (!response?.interviewReport) {
                 throw new Error("Interview report was not returned by the server.")
             }
@@ -35,9 +35,8 @@ export const useInterview = () => {
 
     const getReportById = async (interviewId) => {
         setLoading(true)
-        let response = null
         try {
-            response = await getInterviewReportById(interviewId)
+            const response = await getInterviewReportById(interviewId)
             if (response?.interviewReport) {
                 setReport(response.interviewReport)
                 return response.interviewReport
@@ -52,9 +51,8 @@ export const useInterview = () => {
 
     const getReports = async () => {
         setLoading(true)
-        let response = null
         try {
-            response = await getAllInterviewReports()
+            const response = await getAllInterviewReports()
             if (response?.interviewReports) {
                 setReports(response.interviewReports)
                 return response.interviewReports
@@ -70,20 +68,25 @@ export const useInterview = () => {
 
     const getResumePdf = async (interviewReportId) => {
         setLoading(true)
-        let response = null
         try {
-            response = await generateResumePdf({ interviewReportId })
-            const url = window.URL.createObjectURL(new Blob([ response ], { type: "application/pdf" }))
+            const response = await generateResumePdf({ interviewReportId })
+            if (!response?.blob || !response.contentType.includes("application/pdf")) {
+                throw new Error("The server did not return a PDF file.")
+            }
+
+            const url = window.URL.createObjectURL(new Blob([ response.blob ], { type: response.contentType }))
             const link = document.createElement("a")
             link.href = url
-            link.setAttribute("download", `resume_${interviewReportId}.pdf`)
+            link.setAttribute("download", response.filename)
             document.body.appendChild(link)
             link.click()
             document.body.removeChild(link)
             window.URL.revokeObjectURL(url)
+            Toast.success("Resume PDF downloaded.")
         }
         catch (error) {
             console.log(error)
+            Toast.error(error.message || "Resume PDF download failed.")
         } finally {
             setLoading(false)
         }
