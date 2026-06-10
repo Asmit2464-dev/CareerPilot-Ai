@@ -37,7 +37,7 @@ const Dashboard = () => {
                             <div className='report-card__header'>
                                 <h2 className='report-card__title'>{report.title || 'Untitled'}</h2>
                                 <span className={`match-badge match-badge--${
-                                    report.matchScore >= 80 ? 'high' :
+                                    report.matchScore >= 75 ? 'high' :
                                     report.matchScore >= 60 ? 'mid' : 'low'
                                 }`}>
                                     {report.matchScore}%

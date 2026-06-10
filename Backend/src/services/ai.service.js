@@ -53,12 +53,13 @@ const interviewReportSchema = z.object({
         answer: z.string().describe("How to answer this question and what points to cover")
     })).describe("Behavioral interview questions tailored to the job"),
     skillGaps: z.array(z.object({
-        skill: z.string().describe("The skill which the candidate is missing or weak in"),
+        skill: z.string().describe("The name of the missing or weak skill (must be unique, do not repeat)"),
         severity: z.enum([ "low", "medium", "high" ]).describe("The severity of this skill gap"),
-        evidence: z.string().describe("Specific evidence from the resume/self-description/job description explaining why this gap exists"),
+        evidence: z.string().describe("Specific evidence/explanation from the resume/self-description/job description explaining why this gap exists"),
         recommendation: z.string().describe("A concise action the candidate should take to close this gap"),
+        projectSuggestion: z.string().describe("A specific practical project suggestion that utilizes this skill for learning"),
         resumeKeyword: z.string().describe("The exact resume keyword or phrase connected to this gap")
-    })).describe("Missing or weak skills compared with the job description"),
+    })).describe("Unique missing or weak skills compared with the job description"),
     preparationPlan: z.array(z.object({
         day: z.number().describe("The day number in the preparation plan, starting from 1"),
         focus: z.string().describe("The main focus of this day in the preparation plan"),
@@ -423,52 +424,82 @@ function buildBehavioralQuestions(title, requiredSkills = []) {
     ]
 }
 
+const SKILL_PROJECT_MAP = {
+    "javascript": "Build an interactive, dynamic web app using ES6+ features, managing complex asynchronous API calls.",
+    "typescript": "Create a strictly typed utility framework or library utilizing advanced interfaces, generics, and strict configurations.",
+    "react": "Develop a complex single-page application dashboard with React Router, Context API or Redux, hooks, and clean reusable components.",
+    "next.js": "Construct a server-side rendered (SSR) e-commerce front-end or blog with optimized SEO, pre-rendering, and next-generation image loader features.",
+    "node.js": "Build a RESTful microservice API incorporating request validation, JWT authentication, and structured logging.",
+    "express": "Create a robust backend server with custom routing, error handling middleware, and rate-limiting.",
+    "mongodb": "Design a document database schema for an e-commerce platform and implement complex aggregate queries.",
+    "postgresql": "Design a relational database schema with foreign keys, index optimizations, and custom view queries.",
+    "sql": "Write complex analytical database queries using JOINs, Window functions, and transaction controls.",
+    "docker": "Dockerize a full-stack React and Node application with multi-stage builds and compose files for service orchestration.",
+    "aws": "Deploy a containerized application to ECS or App Runner and set up cloud watch alarms and billing alerts.",
+    "testing": "Write comprehensive unit and integration tests using Jest and React Testing Library for a login system.",
+    "python": "Create an automated web scraper script or data analysis script with pandas and export results to Excel."
+};
+
 function buildSkillGaps(requiredSkills, resume, selfDescription) {
     const candidateText = normalizeText(`${resume || ""} ${selfDescription || ""}`)
     const gaps = requiredSkills
         .filter(skill => !candidateText.includes(skill))
-        .map((skill, index) => ({
-            skill,
-            severity: index < 2 ? "high" : "medium",
-            evidence: `The job description asks for ${skill}, but it is not clearly visible in the resume or self-description.`,
-            recommendation: `Add a truthful project bullet, coursework item, or practice example that shows practical ${skill} exposure.`,
-            resumeKeyword: skill
-        }))
+        .map((skill, index) => {
+            const skillLower = skill.toLowerCase();
+            const project = SKILL_PROJECT_MAP[skillLower] || `Build a practical hands-on project utilizing ${skill} (such as a CRUD application, automated script, or API service) to showcase functional proficiency.`;
+            let severity = "low";
+            if (index < 3) severity = "high";
+            else if (index < 7) severity = "medium";
+
+            return {
+                skill,
+                severity,
+                evidence: `The job description emphasizes proficiency in ${skill}, but there is no explicit mention or evidence of it in your resume or profile description.`,
+                recommendation: `Study the core concepts of ${skill} and implement the suggested project to bridge this gap.`,
+                projectSuggestion: project,
+                resumeKeyword: skill
+            };
+        })
 
     const generalGaps = [
         {
             skill: "Role-specific project evidence",
             severity: "high",
-            evidence: "The resume should show examples that map directly to the target role responsibilities.",
-            recommendation: "Add 2-3 bullets that connect past projects to the job description with tools, actions, and outcomes.",
+            evidence: "The job description requires hands-on experience in target role projects, but the resume shows general or misaligned projects.",
+            recommendation: "Add 2-3 detailed project bullet points mapping directly to the job description responsibilities using actions and outcomes.",
+            projectSuggestion: "Design a comprehensive deployment flow and log implementation details for a recent application.",
             resumeKeyword: "Role-aligned projects"
         },
         {
             skill: "Quantified impact metrics",
             severity: "medium",
-            evidence: "Impact is stronger when outcomes include numbers, scale, speed, accuracy, users, revenue, or time saved.",
-            recommendation: "Rewrite key bullets with measurable results wherever the source material supports it.",
+            evidence: "Most project descriptions list responsibilities instead of achievements and measurable metrics.",
+            recommendation: "Rewrite key resume bullet points with concrete metrics (e.g. performance speedups, user retention, scale, or time saved).",
+            projectSuggestion: "Refactor a backend algorithm to reduce execution time and quantify the reduction.",
             resumeKeyword: "Impact metrics"
         },
         {
             skill: "System design explanation",
             severity: "medium",
-            evidence: "Many technical roles expect candidates to explain architecture, trade-offs, and reliability.",
-            recommendation: "Prepare one project story that covers architecture, data flow, trade-offs, testing, and deployment.",
+            evidence: "The role description expects understanding of system design, architecture, and scalability which isn't detailed in the resume.",
+            recommendation: "Prepare a system design diagram/case study of one of your projects covering data flow, scaling bottlenecks, and security trade-offs.",
+            projectSuggestion: "Create a detailed multi-tier architecture diagram for a scalable application with caching.",
             resumeKeyword: "System design"
         },
         {
             skill: "Testing and debugging examples",
             severity: "medium",
-            evidence: "The resume should show how the candidate validates work and handles issues, not only what was built.",
-            recommendation: "Add a bullet about testing, debugging, monitoring, or reliability work from a real project.",
+            evidence: "The resume does not detail how code is tested or how issues are diagnosed in production environments.",
+            recommendation: "Add unit testing, integration testing, or observability/debugging logs configuration to your experience bullets.",
+            projectSuggestion: "Write a test suite covering critical endpoints and boundary cases for an API service.",
             resumeKeyword: "Testing and debugging"
         },
         {
             skill: "Behavioral STAR stories",
             severity: "low",
-            evidence: "Interview success depends on clear stories for ownership, teamwork, conflict, and learning.",
-            recommendation: "Prepare concise STAR stories tied to the job description responsibilities.",
+            evidence: "The job description emphasizes collaboration and communication, but there are no behavioral highlights in the profile.",
+            recommendation: "Draft 2-3 structured STAR stories (Situation, Task, Action, Result) showcasing leadership, conflict resolution, or rapid self-learning.",
+            projectSuggestion: "Document a technical conflict scenario, your resolution approach, and the key lessons learned.",
             resumeKeyword: "Collaboration and ownership"
         }
     ]
@@ -479,148 +510,220 @@ function buildSkillGaps(requiredSkills, resume, selfDescription) {
 }
 
 function buildPreparationPlan(title, requiredSkills, skillGaps = []) {
-    const primarySkill = requiredSkills[0] || "the most important role skill"
-    const secondarySkill = requiredSkills[1] || "the second most important role skill"
-    const mainGap = skillGaps[0]?.skill || primarySkill
-    const secondGap = skillGaps[1]?.skill || secondarySkill
+    const highGaps = skillGaps.filter(g => g.severity === "high");
+    const mediumGaps = skillGaps.filter(g => g.severity === "medium");
+    const lowGaps = skillGaps.filter(g => g.severity === "low");
+    const learningGaps = [ ...highGaps, ...mediumGaps, ...lowGaps ];
 
-    return [
-        {
-            day: 1,
-            focus: `Map your background to the ${title} requirements`,
+    const plan = [];
+
+    const getGapDayContent = (dayNum, gapItem) => {
+        let projectText = "a small practice application";
+        const recommendation = gapItem.recommendation || "";
+        const projectMatch = recommendation.match(/"([^"]+)"/);
+        if (projectMatch && projectMatch[1]) {
+            projectText = projectMatch[1];
+        }
+
+        return {
+            day: dayNum,
+            focus: `Close gap: Study and master ${gapItem.skill} (${gapItem.severity} priority)`,
             tasks: [
-                "Highlight the top responsibilities from the job description.",
-                "Match each responsibility to a resume or self-description example.",
-                "Prepare a short pitch for why your background fits this role."
+                `Learn the core concepts, architecture, and common interview questions for ${gapItem.skill}.`,
+                `Evidence of gap: ${gapItem.evidence}`,
+                `Project Suggestion: Start building a project: "${projectText}".`,
+                `Add this project and the ${gapItem.resumeKeyword || gapItem.skill} keyword to your resume upon completion.`
             ]
-        },
-        {
+        };
+    };
+
+    plan.push({
+        day: 1,
+        focus: `Align background with ${title} requirements`,
+        tasks: [
+            "Review the job description requirements and identify key technologies.",
+            "Compare your background and highlight matching skills.",
+            "Prepare a short elevator pitch explaining why you are a strong fit."
+        ]
+    });
+
+    if (learningGaps[0]) {
+        plan.push(getGapDayContent(2, learningGaps[0]));
+    } else {
+        plan.push({
             day: 2,
-            focus: `Review ${primarySkill} fundamentals`,
+            focus: `Deep dive into core role technologies`,
             tasks: [
-                `Practice explaining how you have used or would use ${primarySkill}.`,
+                "Practice explaining the main technology stack mentioned in the job description.",
                 "Review common interview questions around the main tools in the job description.",
                 "Write two concise project examples that show practical skill."
             ]
-        },
-        {
-            day: 3,
-            focus: "Practice technical problem solving",
-            tasks: [
-                "Solve one role-relevant coding, design, or workflow problem.",
-                "Explain your approach out loud with trade-offs.",
-                "Review edge cases, testing, and performance considerations."
-            ]
-        },
-        {
+        });
+    }
+
+    plan.push({
+        day: 3,
+        focus: "Technical problem solving & coding practice",
+        tasks: [
+            "Practice live coding or system design patterns related to the target role.",
+            "Explain your logic out loud while writing clean, modular code.",
+            "Focus on edge cases, scaling bottlenecks, and testing."
+        ]
+    });
+
+    if (learningGaps[1]) {
+        plan.push(getGapDayContent(4, learningGaps[1]));
+    } else {
+        plan.push({
             day: 4,
-            focus: "Build behavioral STAR stories",
+            focus: "Review secondary job requirements",
             tasks: [
-                "Prepare stories for ownership, teamwork, conflict, and learning.",
-                "Tie each story to a requirement in the job description.",
-                "Keep each answer under two minutes."
+                "Study supporting libraries and tools listed in the job description.",
+                "Build a small helper utility or setup configuration file.",
+                "Review security guidelines and error handling strategies."
             ]
-        },
-        {
-            day: 5,
-            focus: "Close skill gaps",
-            tasks: [
-                "Study the highest-priority missing skill from the gap list.",
-                "Complete a small hands-on exercise or project note for that skill.",
-                "Prepare an honest answer for how you are improving it."
-            ]
-        },
-        {
+        });
+    }
+
+    plan.push({
+        day: 5,
+        focus: "Build behavioral STAR stories",
+        tasks: [
+            "Prepare STAR stories for ownership, team collaboration, and learning agility.",
+            "Map each scenario to the core values/culture of the target company.",
+            "Practice delivering concise answers under two minutes."
+        ]
+    });
+
+    if (learningGaps[2]) {
+        plan.push(getGapDayContent(6, learningGaps[2]));
+    } else {
+        plan.push({
             day: 6,
             focus: "Mock interview practice",
             tasks: [
-                "Answer three technical questions and two behavioral questions out loud.",
-                "Record or time your answers.",
-                "Refine unclear examples and remove filler."
+                "Record yourself answering three technical questions from this report.",
+                "Evaluate clarity of explanations, pacing, and depth.",
+                "Refine answers to eliminate jargon and filler words."
             ]
-        },
-        {
-            day: 7,
-            focus: "Final interview review",
-            tasks: [
-                "Review your resume, target role, key projects, and gap plan.",
-                "Prepare thoughtful questions for the interviewer.",
-                "Practice a confident opening and closing statement."
-            ]
-        },
-        {
+        });
+    }
+
+    plan.push({
+        day: 7,
+        focus: "Mid-preparation checkpoint & resume review",
+        tasks: [
+            "Ensure matching skills are highlighted in the top third of your resume.",
+            "Verify all technical answers cover intention, approach, and trade-offs.",
+            "Plan the rest of the preparation around remaining skill gaps."
+        ]
+    });
+
+    if (learningGaps[3]) {
+        plan.push(getGapDayContent(8, learningGaps[3]));
+    } else {
+        plan.push({
             day: 8,
-            focus: `Hands-on practice for ${mainGap}`,
+            focus: "Study database & data flow design",
             tasks: [
-                `Complete a small practical exercise that demonstrates ${mainGap}.`,
-                "Write one resume bullet that truthfully explains what you practiced or built.",
-                "Prepare a short answer for how you are improving this skill."
+                "Review database patterns, schemas, and query optimization methods.",
+                "Design a small data model for a complex system component.",
+                "Explain database trade-offs (e.g. SQL vs. NoSQL) for the role."
             ]
-        },
-        {
+        });
+    }
+
+    if (learningGaps[4]) {
+        plan.push(getGapDayContent(9, learningGaps[4]));
+    } else {
+        plan.push({
             day: 9,
-            focus: `Deepen ${secondarySkill} knowledge`,
+            focus: "Practice system integrations & APIs",
             tasks: [
-                `Review common interview questions and mistakes around ${secondarySkill}.`,
-                "Create flash notes for definitions, trade-offs, and examples.",
-                "Explain the concept out loud in simple and technical language."
+                "Review REST or GraphQL API design standards, headers, and status codes.",
+                "Build a small integration service using third-party APIs.",
+                "Test API response structures and handle edge failures."
             ]
-        },
-        {
+        });
+    }
+
+    if (learningGaps[5]) {
+        plan.push(getGapDayContent(10, learningGaps[5]));
+    } else {
+        plan.push({
             day: 10,
-            focus: "Project story refinement",
+            focus: "Refine project descriptions",
             tasks: [
-                "Choose two projects that best match the job description.",
-                "Rewrite each story with problem, action, tools, result, and trade-offs.",
-                "Add metrics or concrete outcomes where the source material supports them."
+                "Rewrite resume experience bullets with active action verbs.",
+                "Ensure achievements show quantitative business impact.",
+                "Review engineering trade-offs made in past projects."
             ]
-        },
-        {
+        });
+    }
+
+    if (learningGaps[6]) {
+        plan.push(getGapDayContent(11, learningGaps[6]));
+    } else {
+        plan.push({
             day: 11,
-            focus: "Advanced technical mock round",
+            focus: "Advanced coding & mock interviews",
             tasks: [
-                "Answer four technical questions from the report without notes.",
-                "For each answer, include assumptions, edge cases, and testing.",
-                "Review weak answers and add missing technical detail."
+                "Perform a full mock interview session covering code optimization.",
+                "Discuss memory management, time complexity, and performance profiling.",
+                "Debug a complex production bug scenario."
             ]
-        },
-        {
+        });
+    }
+
+    if (learningGaps[7]) {
+        plan.push(getGapDayContent(12, learningGaps[7]));
+    } else {
+        plan.push({
             day: 12,
-            focus: "Behavioral mock round",
+            focus: "Review deployment & DevOps",
             tasks: [
-                "Practice five behavioral questions with STAR structure.",
-                "Tie each story to one job responsibility or company need.",
-                "Trim answers to stay clear, specific, and under two minutes."
+                "Study CI/CD pipeline structures, runners, and configuration files.",
+                "Practice deployment processes (e.g. using Docker, staging clusters).",
+                "Review server logging, error metrics, and monitoring tools."
             ]
-        },
-        {
+        });
+    }
+
+    if (learningGaps[8]) {
+        plan.push(getGapDayContent(13, learningGaps[8]));
+    } else {
+        plan.push({
             day: 13,
-            focus: `Close the ${secondGap} gap`,
+            focus: "Final gap review",
             tasks: [
-                `Study the basics and one practical use case for ${secondGap}.`,
-                "Document what you learned in three concise bullets.",
-                "Prepare a transparent interview answer about current skill level and next steps."
+                "Review notes for all identified high and medium priority skill gaps.",
+                "Verify mock answers show robust technical understanding.",
+                "Update resume with any last-minute skill key phrases."
             ]
-        },
-        {
-            day: 14,
-            focus: "Final readiness check",
-            tasks: [
-                "Review the resume PDF, skill gap list, and interview question answers.",
-                "Prepare a 60-second introduction tailored to the role.",
-                "Confirm examples for technical depth, teamwork, ownership, and learning agility."
-            ]
-        },
-        {
-            day: 15,
-            focus: "Interview Day & Confidence Polish",
-            tasks: [
-                "Review key talking points and STAR project scenarios one last time.",
-                "Perform a final equipment and software environment check (if remote).",
-                "Take a deep breath, stay confident, and focus on clear, structured communication."
-            ]
-        }
-    ]
+        });
+    }
+
+    plan.push({
+        day: 14,
+        focus: "Final interview readiness check",
+        tasks: [
+            "Perform a complete dry-run of the resume and top projects.",
+            "Prepare a 60-second introduction emphasizing role-aligned experience.",
+            "Re-read STAR stories to ensure smooth, natural delivery."
+        ]
+    });
+
+    plan.push({
+        day: 15,
+        focus: "Interview Day & Confidence Polish",
+        tasks: [
+            "Review key talking points and STAR project scenarios one last time.",
+            "Perform a final equipment and software environment check (if remote).",
+            "Take a deep breath, stay confident, and focus on clear, structured communication."
+        ]
+    });
+
+    return plan;
 }
 
 function buildFallbackInterviewReport(jobDescription, resume, selfDescription) {
@@ -655,6 +758,7 @@ function normalizeSkillGap(gap, fallbackGap) {
         severity,
         evidence: compactText(gap?.evidence) || fallbackGap.evidence || `The job description highlights ${skill}, but the candidate material does not show enough evidence yet.`,
         recommendation: compactText(gap?.recommendation) || fallbackGap.recommendation || `Add a truthful example, project bullet, or practice note that demonstrates ${skill}.`,
+        projectSuggestion: compactText(gap?.projectSuggestion) || fallbackGap.projectSuggestion || `Build a practical hands-on project utilizing ${skill} to showcase functional proficiency.`,
         resumeKeyword: compactText(gap?.resumeKeyword) || fallbackGap.resumeKeyword || skill
     }
 }
@@ -717,24 +821,32 @@ function normalizeInterviewReport(candidateReport, fallbackReport) {
 
 async function generateInterviewReport({ resume, selfDescription, jobDescription }) {
     const fallbackReport = buildFallbackInterviewReport(jobDescription, resume, selfDescription)
-    const prompt = `You are an expert interview coach, senior technical interviewer, and ATS analyst. Generate an interview strategy report using only the supplied candidate details and target job description.
+    const prompt = `You are an expert interview coach, senior technical interviewer, and ATS analyst. Generate a comprehensive interview strategy report comparing the candidate's profile against the target job description.
 
-Candidate resume text:
+Candidate Resume Text:
 ${resume || "Not provided"}
 
-Candidate self description:
+Candidate Self-Description:
 ${selfDescription || "Not provided"}
 
-Target job description:
+Target Job Description:
 ${jobDescription}
 
 Required output:
-- Exactly ${TARGET_TECHNICAL_QUESTION_COUNT} technical questions. Make them practical, role-specific, and progressively deeper. Cover implementation, debugging, architecture, testing, deployment, performance, security, and trade-offs when relevant to the job description.
-- Exactly ${TARGET_BEHAVIORAL_QUESTION_COUNT} behavioral questions. Use scenarios tied to the job responsibilities, teamwork, ownership, conflict, learning agility, ambiguity, and communication.
-- Exactly ${TARGET_SKILL_GAP_COUNT} skill gaps based on differences between the job description and the resume/self-description. Include evidence, recommendation, and resumeKeyword for each gap.
-- Exactly ${TARGET_PREPARATION_DAYS} preparation-plan days. Each day should have a clear focus and 3-4 concrete tasks.
+1. Exactly ${TARGET_TECHNICAL_QUESTION_COUNT} technical questions: practical, role-specific, and progressively deeper, covering implementation, debugging, testing, deployment, and trade-offs.
+2. Exactly ${TARGET_BEHAVIORAL_QUESTION_COUNT} behavioral questions: scenario-based, targeting ownership, teamwork, collaboration, and learning agility.
+3. Exactly ${TARGET_SKILL_GAP_COUNT} unique, non-repeating skill gaps (ensure NO duplicate skills are returned, each must be a completely distinct missing or weak skill):
+   - Identify critical skills, tools, or concepts from the job description that are missing or weak in the candidate's profile.
+   - Categorize each gap by severity: "high" (core requirements), "medium" (important supporting skills), or "low" (nice-to-have/peripheral skills).
+   - Under "evidence", provide a clear explanation/evidence of why it is a gap based on the job description and candidate details.
+   - Under "recommendation", provide a concise action plan explaining how to study and learn this skill.
+   - Under "projectSuggestion", suggest a concrete, practical, hands-on project the candidate should build to learn and master this skill.
+4. Exactly ${TARGET_PREPARATION_DAYS} preparation-plan days (Roadmap):
+   - Dynamically integrate the identified skill gaps and their suggested projects into the day-by-day roadmap.
+   - Schedule specific days for the candidate to study the missing technologies, build the suggested hands-on projects, and review progress.
+   - Ensure the roadmap has a clear logical progression to close all gaps.
 
-Return valid JSON only. Make every question, skill gap, score, and preparation task specific to this candidate and this job. Do not invent employment history, certifications, education, or achievements that are not supported by the supplied candidate details.`
+Return valid JSON only. Ensure all details are tailored to this candidate and job. Do not invent employment history or certifications.`
 
     try {
         const response = await getAiClient().models.generateContent({
@@ -804,6 +916,24 @@ async function generatePdfFromHtml(htmlContent) {
     }
 }
 
+function inferCertifications(jobDescription, requiredSkills) {
+    const text = String(jobDescription || "").toLowerCase()
+    const certs = []
+    if (text.includes("aws")) certs.push("AWS Certified Developer - Associate")
+    if (text.includes("kubernetes") || text.includes("docker")) certs.push("Certified Kubernetes Administrator (CKA)")
+    if (text.includes("scrum") || text.includes("agile")) certs.push("Professional Scrum Master (PSM I)")
+    if (text.includes("security")) certs.push("CompTIA Security+ or CISSP")
+    if (text.includes("react") || text.includes("next.js") || text.includes("javascript")) certs.push("Meta Front-End Developer Professional Certificate")
+    if (text.includes("node") || text.includes("backend")) certs.push("Node.js Application Developer (JSNAD)")
+    if (text.includes("python") || text.includes("machine learning") || text.includes("data science")) certs.push("Google Professional Data Engineer")
+
+    if (certs.length < 2) {
+        certs.push("Advanced Software Engineering Certification")
+        certs.push("Certified Professional Software Developer (CPSD)")
+    }
+    return [ ...new Set(certs) ].slice(0, 3)
+}
+
 function buildFallbackResumeHtml({ resume, selfDescription, jobDescription, title, skillGaps = [], preparationPlan = [], matchScore }) {
     const resolvedTitle = compactText(title) || inferJobTitle(jobDescription)
     const requiredSkills = extractRequiredSkills(jobDescription)
@@ -819,6 +949,7 @@ function buildFallbackResumeHtml({ resume, selfDescription, jobDescription, titl
                 severity: [ "low", "medium", "high" ].includes(gap?.severity) ? gap.severity : "medium",
                 evidence: compactText(gap?.evidence),
                 recommendation: compactText(gap?.recommendation),
+                projectSuggestion: compactText(gap?.projectSuggestion) || `Build a project showcasing ${gap.skill}.`,
                 resumeKeyword: compactText(gap?.resumeKeyword)
             }))
             .filter(gap => gap.skill)
@@ -832,7 +963,10 @@ function buildFallbackResumeHtml({ resume, selfDescription, jobDescription, titl
         .split(/\r?\n/)
         .map(compactText)
         .find(line => line && line.length >= 2 && line.length <= 60 && !line.includes("@") && !/\d{5,}/.test(line)) || "Candidate Profile"
-    const summary = compactText(selfDescription) || `Candidate targeting ${resolvedTitle} opportunities with a focus on practical execution, communication, and continuous learning.`
+    
+    // Tailored professional summary
+    const summary = `Results-oriented ${resolvedTitle} with demonstrated expertise in ${demonstratedSkills.slice(0, 3).join(", ") || "software design"}. Actively enhancing skills in ${skillsInProgress.slice(0, 3).join(", ") || "advanced technologies"} to deliver scalable, high-performance solutions aligned with the target job requirements.`
+
     const resumeLines = String(resume || "")
         .split(/\r?\n/)
         .map(compactText)
@@ -840,6 +974,28 @@ function buildFallbackResumeHtml({ resume, selfDescription, jobDescription, titl
         .slice(0, 15)
 
     const allSkills = [ ...new Set([ ...demonstratedSkills, ...skillsInProgress ]) ]
+
+    // Dynamically build projects based on gaps or JD
+    const gapProjects = normalizedGaps
+        .filter(g => g.projectSuggestion)
+        .map(g => ({
+            title: `${g.skill} Implementation Project`,
+            description: g.projectSuggestion
+        }))
+    const defaultProjects = [
+        {
+            title: `Enterprise ${resolvedTitle} Platform`,
+            description: `Designed and built a robust enterprise system utilizing ${requiredSkills.slice(0, 3).join(", ") || "core technologies"} to optimize performance and handle concurrent traffic.`
+        },
+        {
+            title: `Distributed Integration Service`,
+            description: `Developed a secure RESTful API microservice leveraging modern software engineering practices, testing protocols, and CI/CD pipelines.`
+        }
+    ]
+    const resumeProjects = gapProjects.length >= 2 ? gapProjects.slice(0, 2) : [ ...gapProjects, ...defaultProjects ].slice(0, 2)
+
+    // Inferred certifications
+    const inferredCerts = inferCertifications(jobDescription, requiredSkills)
 
     return `<!DOCTYPE html>
 <html>
@@ -881,10 +1037,25 @@ function buildFallbackResumeHtml({ resume, selfDescription, jobDescription, titl
             <div class="skill-item"><strong>Additional Skills:</strong> ${allSkills.slice(Math.ceil(allSkills.length/2)).map(s => escapeHtml(s)).join(", ")}</div>
         </div>
 
-        <h2>Professional Experience & Projects</h2>
+        <h2>Key Projects</h2>
+        ${resumeProjects.map(proj => `
         <div class="experience-item">
             <div class="item-header">
-                <span>RELEVANT EXPERIENCE & PROJECTS</span>
+                <span>${escapeHtml(proj.title)}</span>
+                <span>Active</span>
+            </div>
+            <div class="item-sub">Technical Demonstration Project</div>
+            <ul>
+                <li>${escapeHtml(proj.description)}</li>
+                <li>Implemented clean architecture, robust testing, and optimized deployment protocols.</li>
+            </ul>
+        </div>
+        `).join("")}
+
+        <h2>Professional Experience</h2>
+        <div class="experience-item">
+            <div class="item-header">
+                <span>RELEVANT EXPERIENCE</span>
                 <span>Present</span>
             </div>
             <div class="item-sub">Key Accomplishments & Responsibilities</div>
@@ -900,6 +1071,15 @@ function buildFallbackResumeHtml({ resume, selfDescription, jobDescription, titl
                 <span>Completed</span>
             </div>
             <div class="item-sub">Relevant coursework and continuous self-directed learning in modern technologies.</div>
+        </div>
+        <div class="experience-item">
+            <div class="item-header">
+                <span>Professional Certifications (ATS Targeted)</span>
+                <span>Completed / In Progress</span>
+            </div>
+            <ul>
+                ${inferredCerts.map(cert => `<li><strong>${escapeHtml(cert)}</strong> - Industry Standard Certification</li>`).join("")}
+            </ul>
         </div>
     </div>
 </body>
@@ -940,9 +1120,12 @@ Rules:
 - Keep the PDF professional, clean, and readable, preferably 1-2 pages.
 - Structuring sections:
   - Header: Center the candidate's name (large, bold, text-transform: uppercase, color: #1e3a8a). Center the contact info (email, phone, location, LinkedIn, GitHub) on the next line. Underneath the header, add a solid dark blue line (border-bottom: 3px solid #1e3a8a).
-  - Sections (PROFESSIONAL SUMMARY, TECHNICAL SKILLS, EXPERIENCE, EDUCATION, PROJECTS): All section titles must be uppercase, bold, color: #1e3a8a, with a thin bottom border (border-bottom: 1px solid #cbd5e1).
+  - Sections (PROFESSIONAL SUMMARY, TECHNICAL SKILLS, PROJECTS, EXPERIENCE, EDUCATION, CERTIFICATIONS): All section titles must be uppercase, bold, color: #1e3a8a, with a thin bottom border (border-bottom: 1px solid #cbd5e1).
+  - Professional Summary: Structure this section in a way that directly aligns with and targets the requirements and key themes of the target Job Description, highlighting the candidate's relevant background and readiness.
   - Technical Skills: Arrange skills in a clean 2-column grid or list categorized into Languages, Frameworks/Libraries, Databases, and Developer Tools/Other. Make sure the category labels are bold. Ensure ALL required skills and missing skills from the job description are categorized and listed.
-  - Experience, Education, and Projects: For each entry, use a layout where the role title/degree/project title is bold on the left, and the date range is bold on the right (e.g. using a flex container: display: flex; justify-content: space-between;). Place the company/school name in italics on the line below it. Use clean bullet points for duties and achievements.
+  - Projects: Create a dedicated projects section containing 2-3 tailored projects directly showcasing the required skills and technologies mentioned in the Job Description, incorporating projects designed to resolve the candidate's key skill gaps (using the provided skill gap recommendations/projects). Each project should show a bold title on the left and active/date on the right, with bullet points demonstrating technical achievements and stack.
+  - Certifications: Create a dedicated certifications section containing industry-standard professional certifications (e.g. AWS Certified Developer, Certified Kubernetes Administrator, Professional Scrum Master, etc.) matching the technologies in the Job Description, to enhance ATS compatibility.
+  - Experience, Education: For each entry, use a layout where the role title/degree is bold on the left, and the date range is bold on the right (e.g. using a flex container: display: flex; justify-content: space-between;). Place the company/school name in italics on the line below it. Use clean bullet points for duties and achievements.
 - The layout must be a clean, single-column resume. DO NOT include sidebars, preparation plans, gap analysis tables, or career coaching advice. It must be a clean, final resume suitable for job applications.`
 
     try {

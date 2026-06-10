@@ -23,12 +23,33 @@ const SkillGapsCard = ({ skillGaps }) => {
                 <span className={`gap-item__icon gap-item__icon--${gap.severity}`} />
                 <span className='gap-item__skill'>{gap.skill}</span>
             </div>
-            <p className='gap-item__description'>{gap.evidence || defaultDescription[gap.severity]}</p>
-            {gap.recommendation && (
-                <p className='gap-item__recommendation'>{gap.recommendation}</p>
+            
+            <div className='gap-item__section'>
+                <span className='gap-item__label'>Why it's a gap:</span>
+                <p className='gap-item__description'>{gap.evidence || defaultDescription[gap.severity]}</p>
+            </div>
+            
+            {gap.projectSuggestion && (
+                <div className='gap-item__project-box'>
+                    <div className='gap-item__project-header'>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="gap-item__project-icon"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+                        <span className='gap-item__project-title'>Suggested Project</span>
+                    </div>
+                    <p className='gap-item__project-text'>{gap.projectSuggestion}</p>
+                </div>
             )}
+            
+            {gap.recommendation && (
+                <div className='gap-item__section'>
+                    <span className='gap-item__label'>Action Plan:</span>
+                    <p className='gap-item__recommendation'>{gap.recommendation}</p>
+                </div>
+            )}
+            
             {gap.resumeKeyword && (
-                <span className='gap-item__keyword'>{gap.resumeKeyword}</span>
+                <div className='gap-item__keyword-container'>
+                    <span className='gap-item__keyword'>{gap.resumeKeyword}</span>
+                </div>
             )}
         </div>
     )

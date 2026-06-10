@@ -424,8 +424,17 @@ $severity-low: #3fb950;
     &__sub {
         margin: 0;
         font-size: 0.75rem;
-        color: $severity-low;
         text-align: center;
+
+        &.sub--high {
+            color: $severity-low; /* Green */
+        }
+        &.sub--mid {
+            color: $severity-medium; /* Orange */
+        }
+        &.sub--low {
+            color: $severity-high; /* Red */
+        }
     }
 }
 

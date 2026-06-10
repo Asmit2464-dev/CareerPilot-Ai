@@ -157,33 +157,92 @@
     flex: 1;
 }
 
+.gap-item__section {
+    margin-top: 10px;
+    padding-left: 30px;
+}
+
+.gap-item__label {
+    display: block;
+    color: #8b949e;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 2px;
+}
+
 .gap-item__description {
-    color: #7d8590;
+    color: #c9d1d9;
     font-size: 0.85rem;
     margin: 0;
-    padding-left: 38px;
     line-height: 1.5;
 }
 
 .gap-item__recommendation {
     color: #c9d1d9;
-    font-size: 0.82rem;
-    margin: 0.6rem 0 0;
-    padding-left: 38px;
+    font-size: 0.85rem;
+    margin: 0;
     line-height: 1.5;
+}
+
+.gap-item__project-box {
+    margin: 14px 0 14px 30px;
+    padding: 12px 14px;
+    background: rgba(56, 139, 253, 0.05);
+    border: 1px dashed rgba(56, 139, 253, 0.25);
+    border-radius: 8px;
+    transition: all 0.2s ease-in-out;
+
+    &:hover {
+        background: rgba(56, 139, 253, 0.08);
+        border-color: rgba(56, 139, 253, 0.4);
+    }
+}
+
+.gap-item__project-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 6px;
+}
+
+.gap-item__project-icon {
+    color: #58a6ff;
+    flex-shrink: 0;
+}
+
+.gap-item__project-title {
+    color: #58a6ff;
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.gap-item__project-text {
+    color: #e6edf3;
+    font-size: 0.82rem;
+    margin: 0;
+    line-height: 1.45;
+}
+
+.gap-item__keyword-container {
+    padding-left: 30px;
+    margin-top: 12px;
 }
 
 .gap-item__keyword {
     display: inline-flex;
-    width: fit-content;
-    margin: 0.7rem 0 0 38px;
     padding: 0.2rem 0.55rem;
     border-radius: 0.35rem;
-    border: 1px solid rgba(125, 133, 144, 0.25);
-    color: #9ecbff;
+    border: 1px solid rgba(56, 139, 253, 0.2);
+    color: #58a6ff;
     background: rgba(56, 139, 253, 0.1);
     font-size: 0.72rem;
     font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
 }
 
 .no-data {
