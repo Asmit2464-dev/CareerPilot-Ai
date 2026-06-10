@@ -3,6 +3,21 @@ const { z } = require("zod")
 const { zodToJsonSchema } = require("zod-to-json-schema")
 const chromium = require("@sparticuz/chromium")
 const puppeteer = require("puppeteer-core")
+const fs = require("fs")
+const path = require("path")
+
+function findChromeOnWindows() {
+    if (process.platform !== "win32") return null;
+    const paths = [
+        "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+        "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
+        path.join(process.env.LOCALAPPDATA || "", "Google\\Chrome\\Application\\chrome.exe")
+    ];
+    for (const p of paths) {
+        if (fs.existsSync(p)) return p;
+    }
+    return null;
+}
 
 let aiClient = null
 
@@ -742,13 +757,27 @@ async function generatePdfFromHtml(htmlContent) {
     let browser
 
     try {
-        const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || process.env.GOOGLE_CHROME_BIN || await chromium.executablePath()
+        let executablePath
+        let launchArgs = []
+
+        if (process.platform === "win32") {
+            const chromePath = findChromeOnWindows()
+            if (chromePath) {
+                executablePath = chromePath
+                launchArgs = [ "--no-sandbox", "--disable-setuid-sandbox" ]
+            } else {
+                throw new Error("Google Chrome not found on Windows in standard paths.")
+            }
+        } else {
+            executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || process.env.GOOGLE_CHROME_BIN || await chromium.executablePath()
+            launchArgs = [ ...chromium.args, "--no-sandbox", "--disable-setuid-sandbox" ]
+        }
 
         browser = await puppeteer.launch({
-            args: [ ...chromium.args, "--no-sandbox", "--disable-setuid-sandbox" ],
-            defaultViewport: chromium.defaultViewport,
+            args: launchArgs,
+            defaultViewport: process.platform === "win32" ? null : chromium.defaultViewport,
             executablePath,
-            headless: chromium.headless
+            headless: process.platform === "win32" ? true : chromium.headless
         })
         const page = await browser.newPage()
         page.setDefaultTimeout(45000)
