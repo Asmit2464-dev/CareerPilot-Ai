@@ -518,13 +518,7 @@ function buildPreparationPlan(title, requiredSkills, skillGaps = []) {
     const plan = [];
 
     const getGapDayContent = (dayNum, gapItem) => {
-        let projectText = "a small practice application";
-        const recommendation = gapItem.recommendation || "";
-        const projectMatch = recommendation.match(/"([^"]+)"/);
-        if (projectMatch && projectMatch[1]) {
-            projectText = projectMatch[1];
-        }
-
+        const projectText = gapItem.projectSuggestion || "a hands-on coding demonstration";
         return {
             day: dayNum,
             focus: `Close gap: Study and master ${gapItem.skill} (${gapItem.severity} priority)`,
@@ -537,6 +531,105 @@ function buildPreparationPlan(title, requiredSkills, skillGaps = []) {
         };
     };
 
+    const staticDayFallbacks = {
+        2: {
+            focus: `Deep dive into core role technologies`,
+            tasks: [
+                "Practice explaining the main technology stack mentioned in the job description.",
+                "Review common interview questions around the main tools in the job description.",
+                "Write two concise project examples that show practical skill."
+            ]
+        },
+        3: {
+            focus: "Technical problem solving & coding practice",
+            tasks: [
+                "Practice live coding or system design patterns related to the target role.",
+                "Explain your logic out loud while writing clean, modular code.",
+                "Focus on edge cases, scaling bottlenecks, and testing."
+            ]
+        },
+        4: {
+            focus: "Review secondary job requirements",
+            tasks: [
+                "Study supporting libraries and tools listed in the job description.",
+                "Build a small helper utility or setup configuration file.",
+                "Review security guidelines and error handling strategies."
+            ]
+        },
+        5: {
+            focus: "Build behavioral STAR stories",
+            tasks: [
+                "Prepare STAR stories for ownership, team collaboration, and learning agility.",
+                "Map each scenario to the core values/culture of the target company.",
+                "Practice delivering concise answers under two minutes."
+            ]
+        },
+        6: {
+            focus: "Mock interview practice",
+            tasks: [
+                "Record yourself answering three technical questions from this report.",
+                "Evaluate clarity of explanations, pacing, and depth.",
+                "Refine answers to eliminate jargon and filler words."
+            ]
+        },
+        7: {
+            focus: "Mid-preparation checkpoint & resume review",
+            tasks: [
+                "Ensure matching skills are highlighted in the top third of your resume.",
+                "Verify all technical answers cover intention, approach, and trade-offs.",
+                "Plan the rest of the preparation around remaining skill gaps."
+            ]
+        },
+        8: {
+            focus: "Study database & data flow design",
+            tasks: [
+                "Review database patterns, schemas, and query optimization methods.",
+                "Design a small data model for a complex system component.",
+                "Explain database trade-offs (e.g. SQL vs. NoSQL) for the role."
+            ]
+        },
+        9: {
+            focus: "Practice system integrations & APIs",
+            tasks: [
+                "Review REST or GraphQL API design standards, headers, and status codes.",
+                "Build a small integration service using third-party APIs.",
+                "Test API response structures and handle edge failures."
+            ]
+        },
+        10: {
+            focus: "Refine project descriptions",
+            tasks: [
+                "Rewrite resume experience bullets with active action verbs.",
+                "Ensure achievements show quantitative business impact.",
+                "Review engineering trade-offs made in past projects."
+            ]
+        },
+        11: {
+            focus: "Advanced coding & mock interviews",
+            tasks: [
+                "Perform a full mock interview session covering code optimization.",
+                "Discuss memory management, time complexity, and performance profiling.",
+                "Debug a complex production bug scenario."
+            ]
+        },
+        12: {
+            focus: "Review deployment & DevOps",
+            tasks: [
+                "Study CI/CD pipeline structures, runners, and configuration files.",
+                "Practice deployment processes (e.g. using Docker, staging clusters).",
+                "Review server logging, error metrics, and monitoring tools."
+            ]
+        },
+        13: {
+            focus: "Final gap review",
+            tasks: [
+                "Review notes for all identified high and medium priority skill gaps.",
+                "Verify mock answers show robust technical understanding.",
+                "Update resume with any last-minute skill key phrases."
+            ]
+        }
+    };
+
     plan.push({
         day: 1,
         focus: `Align background with ${title} requirements`,
@@ -547,160 +640,18 @@ function buildPreparationPlan(title, requiredSkills, skillGaps = []) {
         ]
     });
 
-    if (learningGaps[0]) {
-        plan.push(getGapDayContent(2, learningGaps[0]));
-    } else {
-        plan.push({
-            day: 2,
-            focus: `Deep dive into core role technologies`,
-            tasks: [
-                "Practice explaining the main technology stack mentioned in the job description.",
-                "Review common interview questions around the main tools in the job description.",
-                "Write two concise project examples that show practical skill."
-            ]
-        });
-    }
-
-    plan.push({
-        day: 3,
-        focus: "Technical problem solving & coding practice",
-        tasks: [
-            "Practice live coding or system design patterns related to the target role.",
-            "Explain your logic out loud while writing clean, modular code.",
-            "Focus on edge cases, scaling bottlenecks, and testing."
-        ]
-    });
-
-    if (learningGaps[1]) {
-        plan.push(getGapDayContent(4, learningGaps[1]));
-    } else {
-        plan.push({
-            day: 4,
-            focus: "Review secondary job requirements",
-            tasks: [
-                "Study supporting libraries and tools listed in the job description.",
-                "Build a small helper utility or setup configuration file.",
-                "Review security guidelines and error handling strategies."
-            ]
-        });
-    }
-
-    plan.push({
-        day: 5,
-        focus: "Build behavioral STAR stories",
-        tasks: [
-            "Prepare STAR stories for ownership, team collaboration, and learning agility.",
-            "Map each scenario to the core values/culture of the target company.",
-            "Practice delivering concise answers under two minutes."
-        ]
-    });
-
-    if (learningGaps[2]) {
-        plan.push(getGapDayContent(6, learningGaps[2]));
-    } else {
-        plan.push({
-            day: 6,
-            focus: "Mock interview practice",
-            tasks: [
-                "Record yourself answering three technical questions from this report.",
-                "Evaluate clarity of explanations, pacing, and depth.",
-                "Refine answers to eliminate jargon and filler words."
-            ]
-        });
-    }
-
-    plan.push({
-        day: 7,
-        focus: "Mid-preparation checkpoint & resume review",
-        tasks: [
-            "Ensure matching skills are highlighted in the top third of your resume.",
-            "Verify all technical answers cover intention, approach, and trade-offs.",
-            "Plan the rest of the preparation around remaining skill gaps."
-        ]
-    });
-
-    if (learningGaps[3]) {
-        plan.push(getGapDayContent(8, learningGaps[3]));
-    } else {
-        plan.push({
-            day: 8,
-            focus: "Study database & data flow design",
-            tasks: [
-                "Review database patterns, schemas, and query optimization methods.",
-                "Design a small data model for a complex system component.",
-                "Explain database trade-offs (e.g. SQL vs. NoSQL) for the role."
-            ]
-        });
-    }
-
-    if (learningGaps[4]) {
-        plan.push(getGapDayContent(9, learningGaps[4]));
-    } else {
-        plan.push({
-            day: 9,
-            focus: "Practice system integrations & APIs",
-            tasks: [
-                "Review REST or GraphQL API design standards, headers, and status codes.",
-                "Build a small integration service using third-party APIs.",
-                "Test API response structures and handle edge failures."
-            ]
-        });
-    }
-
-    if (learningGaps[5]) {
-        plan.push(getGapDayContent(10, learningGaps[5]));
-    } else {
-        plan.push({
-            day: 10,
-            focus: "Refine project descriptions",
-            tasks: [
-                "Rewrite resume experience bullets with active action verbs.",
-                "Ensure achievements show quantitative business impact.",
-                "Review engineering trade-offs made in past projects."
-            ]
-        });
-    }
-
-    if (learningGaps[6]) {
-        plan.push(getGapDayContent(11, learningGaps[6]));
-    } else {
-        plan.push({
-            day: 11,
-            focus: "Advanced coding & mock interviews",
-            tasks: [
-                "Perform a full mock interview session covering code optimization.",
-                "Discuss memory management, time complexity, and performance profiling.",
-                "Debug a complex production bug scenario."
-            ]
-        });
-    }
-
-    if (learningGaps[7]) {
-        plan.push(getGapDayContent(12, learningGaps[7]));
-    } else {
-        plan.push({
-            day: 12,
-            focus: "Review deployment & DevOps",
-            tasks: [
-                "Study CI/CD pipeline structures, runners, and configuration files.",
-                "Practice deployment processes (e.g. using Docker, staging clusters).",
-                "Review server logging, error metrics, and monitoring tools."
-            ]
-        });
-    }
-
-    if (learningGaps[8]) {
-        plan.push(getGapDayContent(13, learningGaps[8]));
-    } else {
-        plan.push({
-            day: 13,
-            focus: "Final gap review",
-            tasks: [
-                "Review notes for all identified high and medium priority skill gaps.",
-                "Verify mock answers show robust technical understanding.",
-                "Update resume with any last-minute skill key phrases."
-            ]
-        });
+    for (let d = 2; d <= 13; d++) {
+        const gapIndex = d - 2;
+        if (learningGaps[gapIndex]) {
+            plan.push(getGapDayContent(d, learningGaps[gapIndex]));
+        } else {
+            const fallback = staticDayFallbacks[d];
+            plan.push({
+                day: d,
+                focus: fallback.focus,
+                tasks: fallback.tasks
+            });
+        }
     }
 
     plan.push({
@@ -835,14 +786,15 @@ ${jobDescription}
 Required output:
 1. Exactly ${TARGET_TECHNICAL_QUESTION_COUNT} technical questions: practical, role-specific, and progressively deeper, covering implementation, debugging, testing, deployment, and trade-offs.
 2. Exactly ${TARGET_BEHAVIORAL_QUESTION_COUNT} behavioral questions: scenario-based, targeting ownership, teamwork, collaboration, and learning agility.
-3. Exactly ${TARGET_SKILL_GAP_COUNT} unique, non-repeating skill gaps (ensure NO duplicate skills are returned, each must be a completely distinct missing or weak skill):
-   - Identify critical skills, tools, or concepts from the job description that are missing or weak in the candidate's profile.
+3. Exactly ${TARGET_SKILL_GAP_COUNT} unique, non-repeating skill gaps based on comparing the candidate profile with the target job description:
+   - Identify critical skills, tools, frameworks, databases, concepts, or certifications from the job description that are missing or weak in the candidate's profile.
+   - Do NOT repeat the same skill gap or list highly similar skills (for example, do not list 'TypeScript' and 'TypeScript syntax' as separate gaps - group them under a single unique gap 'TypeScript'). Every single skill gap in the list must be for a completely distinct and unique technology, tool, or concept.
    - Categorize each gap by severity: "high" (core requirements), "medium" (important supporting skills), or "low" (nice-to-have/peripheral skills).
-   - Under "evidence", provide a clear explanation/evidence of why it is a gap based on the job description and candidate details.
+   - Under "evidence", provide a clear explanation and evidence of why it is a gap based on the job description requirements and the candidate's profile details.
    - Under "recommendation", provide a concise action plan explaining how to study and learn this skill.
    - Under "projectSuggestion", suggest a concrete, practical, hands-on project the candidate should build to learn and master this skill.
 4. Exactly ${TARGET_PREPARATION_DAYS} preparation-plan days (Roadmap):
-   - Dynamically integrate the identified skill gaps and their suggested projects into the day-by-day roadmap.
+   - Dynamically integrate the identified unique skill gaps and their suggested projects into the day-by-day roadmap.
    - Schedule specific days for the candidate to study the missing technologies, build the suggested hands-on projects, and review progress.
    - Ensure the roadmap has a clear logical progression to close all gaps.
 
