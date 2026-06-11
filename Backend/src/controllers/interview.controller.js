@@ -123,7 +123,7 @@ async function generateResumePdfController(req, res) {
             })
         }
 
-        const { resume, jobDescription, selfDescription, title, matchScore, skillGaps, preparationPlan } = interviewReport
+        const { resume, jobDescription, selfDescription, title, matchScore, skillGaps, preparationPlan, professionalSummary, certifications, recommendedProjects } = interviewReport
 
         const pdfBuffer = await generateResumePdf({
             resume,
@@ -132,7 +132,10 @@ async function generateResumePdfController(req, res) {
             title,
             matchScore,
             skillGaps,
-            preparationPlan
+            preparationPlan,
+            professionalSummary,
+            certifications,
+            recommendedProjects
         })
 
         res.set({

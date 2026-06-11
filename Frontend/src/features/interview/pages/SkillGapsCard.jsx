@@ -22,12 +22,25 @@ const SkillGapsCard = ({ skillGaps }) => {
             <div className='gap-item__header'>
                 <span className={`gap-item__icon gap-item__icon--${gap.severity}`} />
                 <span className='gap-item__skill'>{gap.skill}</span>
+                {gap.estimatedLearningTime && (
+                    <span className='gap-item__time-badge'>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="gap-item__time-icon"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                        {gap.estimatedLearningTime}
+                    </span>
+                )}
             </div>
             
             <div className='gap-item__section'>
                 <span className='gap-item__label'>Why it's a gap:</span>
-                <p className='gap-item__description'>{gap.evidence || defaultDescription[gap.severity]}</p>
+                <p className='gap-item__description'>{gap.explanation || gap.evidence || defaultDescription[gap.severity]}</p>
             </div>
+
+            {gap.interviewImpact && (
+                <div className='gap-item__section'>
+                    <span className='gap-item__label'>Interview Impact:</span>
+                    <p className='gap-item__impact'>{gap.interviewImpact}</p>
+                </div>
+            )}
             
             {gap.projectSuggestion && (
                 <div className='gap-item__project-box'>

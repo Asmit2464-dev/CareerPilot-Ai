@@ -157,6 +157,30 @@
     flex: 1;
 }
 
+.gap-item__time-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 12px;
+    background: rgba(139, 148, 158, 0.15);
+    color: #8b949e;
+    font-size: 0.72rem;
+    font-weight: 600;
+    margin-left: 8px;
+}
+
+.gap-item__time-icon {
+    flex-shrink: 0;
+}
+
+.gap-item__impact {
+    color: #c9d1d9;
+    font-size: 0.85rem;
+    margin: 0;
+    line-height: 1.5;
+}
+
 .gap-item__section {
     margin-top: 10px;
     padding-left: 30px;

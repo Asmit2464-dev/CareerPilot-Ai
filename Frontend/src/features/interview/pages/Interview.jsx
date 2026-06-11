@@ -11,6 +11,8 @@ const NAV_ITEMS = [
     { id: 'technical', label: 'Technical Questions', icon: (<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" /></svg>) },
     { id: 'behavioral', label: 'Behavioral Questions', icon: (<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>) },
     { id: 'gaps', label: 'Skill Gaps', icon: (<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="16" /><line x1="8" y1="12" x2="16" y2="12" /></svg>) },
+    { id: 'projects', label: 'Recommended Projects', icon: (<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>) },
+    { id: 'certifications', label: 'Certifications', icon: (<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>) },
     { id: 'roadmap', label: 'Road Map', icon: (<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11" /></svg>) },
 ]
 
@@ -59,6 +61,48 @@ const RoadMapDay = ({ day }) => (
     </div>
 )
 
+const RoadMapTab = ({ preparationPlan }) => {
+    const [ activeWeek, setActiveWeek ] = useState(1);
+    
+    const weeks = {
+        1: preparationPlan.filter(d => d.day >= 1 && d.day <= 7),
+        2: preparationPlan.filter(d => d.day >= 8 && d.day <= 14),
+        3: preparationPlan.filter(d => d.day >= 15 && d.day <= 21),
+        4: preparationPlan.filter(d => d.day >= 22 && d.day <= 30)
+    };
+
+    return (
+        <section className='roadmap-section'>
+            <div className='content-header'>
+                <h2>Preparation Road Map</h2>
+                <span className='content-header__count'>{preparationPlan.length}-day plan</span>
+            </div>
+            
+            <div className='week-selector'>
+                {[1, 2, 3, 4].map(w => (
+                    <button
+                        key={w}
+                        className={`week-btn ${activeWeek === w ? 'week-btn--active' : ''}`}
+                        onClick={() => setActiveWeek(w)}
+                    >
+                        Week {w}
+                    </button>
+                ))}
+            </div>
+
+            <div className='roadmap-list'>
+                {(weeks[activeWeek] || []).length > 0 ? (
+                    weeks[activeWeek].map((day) => (
+                        <RoadMapDay key={day.day} day={day} />
+                    ))
+                ) : (
+                    <p className='no-data'>No roadmap entries for this week</p>
+                )}
+            </div>
+        </section>
+    );
+};
+
 // ── Main Component ────────────────────────────────────────────────────────────
 const Interview = () => {
     const [ activeNav, setActiveNav ] = useState('technical')
@@ -70,8 +114,6 @@ const Interview = () => {
             getReportById(interviewId)
         }
     }, [ interviewId ])
-
-
 
     if (loading || !report) {
         return (
@@ -93,7 +135,6 @@ const Interview = () => {
         report.matchScore >= 75 ? 'Strong match for this role' :
             report.matchScore >= 60 ? 'Good match with some gaps' :
                 'Weak match, focus on critical skill gaps'
-
 
     return (
         <div className='interview-page'>
@@ -158,18 +199,57 @@ const Interview = () => {
                         <SkillGapsCard skillGaps={report.skillGaps} />
                     )}
 
-                    {activeNav === 'roadmap' && (
-                        <section>
+                    {activeNav === 'projects' && (
+                        <section className='projects-section'>
                             <div className='content-header'>
-                                <h2>Preparation Road Map</h2>
-                                <span className='content-header__count'>{report.preparationPlan.length}-day plan</span>
+                                <h2>Recommended Projects</h2>
+                                <span className='content-header__count'>{(report.recommendedProjects || []).length} projects</span>
                             </div>
-                            <div className='roadmap-list'>
-                                {report.preparationPlan.map((day) => (
-                                    <RoadMapDay key={day.day} day={day} />
-                                ))}
+                            <div className='projects-list'>
+                                {(report.recommendedProjects || []).length > 0 ? (
+                                    report.recommendedProjects.map((proj, idx) => (
+                                        <div key={idx} className='project-card-ui'>
+                                            <div className='project-card-ui__header'>
+                                                <h3 className='project-card-ui__title'>{proj.title}</h3>
+                                                <div className='project-card-ui__skills'>
+                                                    {(proj.skillsAddressed || []).map((skill, sIdx) => (
+                                                        <span key={sIdx} className='skill-tag-badge'>{skill}</span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                            <p className='project-card-ui__explanation'><strong>Close the gap:</strong> {proj.explanation}</p>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <p className='no-data'>No recommended projects available</p>
+                                )}
                             </div>
                         </section>
+                    )}
+
+                    {activeNav === 'certifications' && (
+                        <section className='certifications-section'>
+                            <div className='content-header'>
+                                <h2>Recommended Certifications</h2>
+                                <span className='content-header__count'>{(report.certifications || []).length} certifications</span>
+                            </div>
+                            <div className='certifications-list'>
+                                {(report.certifications || []).length > 0 ? (
+                                    report.certifications.map((cert, idx) => (
+                                        <div key={idx} className='certification-card-ui'>
+                                            <h3 className='certification-card-ui__name'>{cert.name}</h3>
+                                            <p className='certification-card-ui__reason'>{cert.reason}</p>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <p className='no-data'>No recommended certifications available</p>
+                                )}
+                            </div>
+                        </section>
+                    )}
+
+                    {activeNav === 'roadmap' && (
+                        <RoadMapTab preparationPlan={report.preparationPlan} />
                     )}
                 </main>
 

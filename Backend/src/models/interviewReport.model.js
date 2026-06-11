@@ -45,10 +45,22 @@ const skillGapSchema = new mongoose.Schema({
         enum: [ "low", "medium", "high" ],
         required: [ true, "Severity is required" ]
     },
+    explanation: {
+        type: String
+    },
+    interviewImpact: {
+        type: String
+    },
+    estimatedLearningTime: {
+        type: String
+    },
     evidence: {
         type: String
     },
     recommendation: {
+        type: String
+    },
+    projectSuggestion: {
         type: String
     },
     resumeKeyword: {
@@ -73,6 +85,17 @@ const preparationPlanSchema = new mongoose.Schema({
     } ]
 })
 
+const certificationSchema = new mongoose.Schema({
+    name: { type: String, required: true },
+    reason: { type: String, required: true }
+}, { _id: false })
+
+const recommendedProjectSchema = new mongoose.Schema({
+    title: { type: String, required: true },
+    explanation: { type: String, required: true },
+    skillsAddressed: [ String ]
+}, { _id: false })
+
 const interviewReportSchema = new mongoose.Schema({
     jobDescription: {
         type: String,
@@ -89,17 +112,22 @@ const interviewReportSchema = new mongoose.Schema({
         min: 0,
         max: 100,
     },
+    title: {
+        type: String,
+        required: [ true, "Job title is required" ]
+    },
+    professionalSummary: {
+        type: String
+    },
     technicalQuestions: [ technicalQuestionSchema ],
     behavioralQuestions: [ behavioralQuestionSchema ],
     skillGaps: [ skillGapSchema ],
     preparationPlan: [ preparationPlanSchema ],
+    certifications: [ certificationSchema ],
+    recommendedProjects: [ recommendedProjectSchema ],
     user: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "users"
-    },
-    title: {
-        type: String,
-        required: [ true, "Job title is required" ]
     }
 }, {
     timestamps: true
