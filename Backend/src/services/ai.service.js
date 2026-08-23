@@ -40,50 +40,55 @@ function getAiClient() {
     return aiClient
 }
 
-const interviewReportSchema = z.object({
+const assessmentAndQuestionsSchema = z.object({
+    title: z.string().describe("The exact target job title from the job description"),
     matchScore: z.number().describe("A score between 0 and 100 indicating how well the candidate's profile matches the job description"),
-    professionalSummary: z.string().describe("An ATS-friendly professional summary tailored to the target job description"),
+    professionalSummary: z.string().describe("A concise, ATS-friendly professional summary tailored to the target job description"),
     technicalQuestions: z.array(z.object({
         question: z.string().describe("The technical question that can be asked in the interview"),
         intention: z.string().describe("The interviewer's intention behind asking this question"),
-        answer: z.string().describe("How to answer this question and what points to cover")
+        answer: z.string().describe("Concise, high-impact model answer highlighting essential points and technical concepts")
     })).describe("Technical interview questions tailored to the job"),
     behavioralQuestions: z.array(z.object({
         question: z.string().describe("The behavioral question that can be asked in the interview"),
         intention: z.string().describe("The interviewer's intention behind asking this question"),
-        answer: z.string().describe("How to answer this question and what points to cover")
-    })).describe("Behavioral interview questions tailored to the job"),
+        answer: z.string().describe("Concise STAR-method response outline with key points to cover")
+    })).describe("Behavioral interview questions tailored to the job")
+})
+
+const skillGapsAndRoadmapSchema = z.object({
     skillGaps: z.array(z.object({
         skill: z.string().describe("The name of the missing or weak skill (must be unique, do not repeat)"),
         severity: z.enum([ "low", "medium", "high" ]).describe("The severity of this skill gap"),
-        explanation: z.string().describe("Clear explanation of why this is a gap based on comparing the candidate profile and job description"),
-        interviewImpact: z.string().describe("Detailed description of how this skill gap impacts the interview performance or hiring decision"),
-        estimatedLearningTime: z.string().describe("Estimated time needed to learn this skill and close the gap (e.g. '3 days', '1 week')"),
-        evidence: z.string().describe("Specific evidence/explanation from the resume/self-description/job description explaining why this gap exists"),
-        recommendation: z.string().describe("A concise action the candidate should take to close this gap"),
-        projectSuggestion: z.string().describe("A specific practical project suggestion that utilizes this skill for learning"),
+        explanation: z.string().describe("Concise explanation of why this is a gap based on comparing the candidate profile and job requirements"),
+        interviewImpact: z.string().describe("Concise description of how this skill gap impacts interview performance or hiring decision"),
+        estimatedLearningTime: z.string().describe("Estimated time needed to learn this skill (e.g. '3 days', '1 week')"),
+        evidence: z.string().describe("Specific evidence/context from the resume or job description explaining why this gap exists"),
+        recommendation: z.string().describe("Concise action plan to close this gap"),
+        projectSuggestion: z.string().describe("A practical hands-on mini-project suggestion utilizing this skill"),
         resumeKeyword: z.string().describe("The exact resume keyword or phrase connected to this gap")
     })).describe("Unique missing or weak skills compared with the job description"),
     preparationPlan: z.array(z.object({
-        day: z.number().describe("The day number in the preparation plan, starting from 1"),
+        day: z.number().describe("The day number in the preparation plan, starting from 1 to 30"),
         focus: z.string().describe("The main focus of this day in the preparation plan"),
-        tasks: z.array(z.string()).describe("Tasks to complete on this day")
-    })).describe("A day-wise interview preparation plan"),
+        tasks: z.array(z.string()).describe("2 to 4 concise, actionable tasks to complete on this day")
+    })).describe("A 30-day interview preparation plan"),
     certifications: z.array(z.object({
         name: z.string().describe("The name of the professional certification"),
-        reason: z.string().describe("Why this certification is recommended based on the target role and skill gaps")
+        reason: z.string().describe("Concise reason why this certification is recommended based on role and skill gaps"),
+        officialUrl: z.string().url().optional().describe("The official certification page URL if known with certainty"),
+        preparationResourceTitle: z.string().optional().describe("The title of a preparation resource if known with certainty"),
+        preparationResourceUrl: z.string().url().optional().describe("The URL of the preparation resource if known with certainty")
     })).describe("5 to 10 recommended certifications"),
     recommendedProjects: z.array(z.object({
         title: z.string().describe("The title of the practical project"),
-        explanation: z.string().describe("How this project helps close the specific skill gaps"),
+        explanation: z.string().describe("Concise explanation of how this project helps close specific skill gaps"),
         skillsAddressed: z.array(z.string()).describe("The list of missing skills addressed by this project")
-    })).describe("Exactly 5 recommended practical projects to bridge skill gaps"),
-    title: z.string().describe("The title of the job for which the interview report is generated")
+    })).describe("Exactly 5 recommended practical projects to bridge skill gaps")
 })
 
-const resumePdfSchema = z.object({
-    html: z.string().describe("Complete, valid resume HTML that can be converted to PDF")
-})
+
+
 
 const COMMON_STOP_WORDS = new Set([
     "the", "and", "for", "with", "that", "this", "from", "will", "have", "has", "are", "you", "your",
@@ -1031,7 +1036,10 @@ function normalizeInterviewReport(candidateReport, fallbackReport) {
         preparationPlan: normalizeList(preparationPlan, fallbackReport.preparationPlan, normalizePreparationDay, TARGET_PREPARATION_DAYS, 45),
         certifications: normalizeList(certifications, fallbackReport.certifications, (c, fb) => ({
             name: compactText(c?.name) || fb.name,
-            reason: compactText(c?.reason) || fb.reason
+            reason: compactText(c?.reason) || fb.reason,
+            officialUrl: isValidHttpUrl(c?.officialUrl) ? c.officialUrl : undefined,
+            preparationResourceTitle: compactText(c?.preparationResourceTitle) || undefined,
+            preparationResourceUrl: isValidHttpUrl(c?.preparationResourceUrl) ? c.preparationResourceUrl : undefined
         }), certifications.length || fallbackReport.certifications.length, 12),
         recommendedProjects: normalizeList(recommendedProjects, fallbackReport.recommendedProjects, (p, fb) => ({
             title: compactText(p?.title) || fb.title,
@@ -1043,9 +1051,18 @@ function normalizeInterviewReport(candidateReport, fallbackReport) {
     return normalized
 }
 
-async function generateInterviewReport({ resume, selfDescription, jobDescription }) {
-    const fallbackReport = buildFallbackInterviewReport(jobDescription, resume, selfDescription)
-    const prompt = `You are an expert interview coach, senior technical interviewer, and ATS analyst. Generate a comprehensive interview strategy report comparing the candidate's profile against the target job description.
+function isValidHttpUrl(value) {
+    try {
+        const url = new URL(value)
+        return url.protocol === "http:" || url.protocol === "https:"
+    } catch {
+        return false
+    }
+}
+
+
+async function generateAssessmentAndQuestions({ resume, selfDescription, jobDescription }) {
+    const prompt = `You are an expert interview coach, senior technical interviewer, and ATS analyst. Evaluate the candidate profile against the target job description and generate the assessment and tailored interview questions.
 
 Candidate Resume Text:
 ${resume || "Not provided"}
@@ -1057,49 +1074,125 @@ Target Job Description:
 ${jobDescription}
 
 Required output:
-1. Exactly ${TARGET_TECHNICAL_QUESTION_COUNT} technical questions tailored to the job title and description:
-   - Must be role-specific. If the job role is Software Engineer, include Data Structures & Algorithms (DSA) questions. If Frontend, focus on React, JavaScript, performance, and UI architecture. If Backend, focus on APIs, databases, scalability, authentication, and security.
-   - Include conceptual questions, scenario-based questions, practical implementation questions, and system design questions.
-2. Exactly ${TARGET_BEHAVIORAL_QUESTION_COUNT} behavioral questions covering:
-   - Leadership, Teamwork, Conflict resolution, Communication, Time management, Problem solving, Failure and learning experiences.
-3. Exactly ${TARGET_SKILL_GAP_COUNT} unique, non-repeating skill gaps based on comparing the candidate profile with the target job description:
-   - Identify critical skills, tools, frameworks, databases, concepts, or certifications from the job description that are missing or weak in the candidate's profile.
-   - Do NOT repeat the same skill gap or list highly similar skills. Every single skill gap must be unique.
-   - Categorize each gap by severity: "high" (core requirements), "medium" (important supporting skills), or "low" (nice-to-have/peripheral skills).
-   - Under "explanation", provide a clear explanation of why this skill is a gap relative to the job requirements and the candidate profile.
-   - Under "interviewImpact", describe how this specific skill gap impacts the candidate's interview performance or hiring decision.
-   - Under "estimatedLearningTime", estimate the time needed to study and learn this skill (e.g. '3 days', '5 days', '1 week').
-   - Under "evidence", provide a clear explanation and evidence of why it is a gap based on the job description requirements and the candidate's profile details.
-   - Under "recommendation", provide a concise action plan explaining how to study and learn this skill.
-   - Under "projectSuggestion", suggest a concrete, practical, hands-on project the candidate should build to learn and master this skill.
-4. Exactly ${TARGET_PREPARATION_DAYS} preparation-plan days (Roadmap):
-   - Organise the 30-day roadmap by weeks: Week 1 (Days 1-7: focus on core learning goals & gaps), Week 2 (Days 8-14: focus on projects), Week 3 (Days 15-21: focus on revision tasks & scenarios), Week 4 (Days 22-30: focus on mock interviews & final prep).
-   - Dynamically integrate the identified unique skill gaps and their suggested projects into the day-by-day roadmap.
-   - Schedule specific days for the candidate to study the missing technologies, build the suggested hands-on projects, and review progress.
-5. Exactly 5 to 10 recommended certifications based on missing skills and target role:
-   - For each certification, include "name" and "reason" why it is recommended to improve ATS and domain proficiency.
-6. Exactly 5 recommended projects based on missing skills:
-   - For each project, include "title", "explanation" of how it helps close the skill gap, and "skillsAddressed" list.
-7. An ATS-friendly professional summary customized to the target Job Description to highlight matched skills and readiness.
+1. "title": The exact target job title from the job description.
+2. "matchScore": An integer between 0 and 100 indicating profile alignment.
+3. "professionalSummary": A concise, ATS-friendly professional summary tailored to highlight candidate strengths for this role.
+4. "technicalQuestions": Exactly ${TARGET_TECHNICAL_QUESTION_COUNT} technical interview questions tailored to the job role and description:
+   - Must be role-specific (e.g. DSA, system design, framework-specific, backend, or cloud concepts as appropriate).
+   - "question": The technical question.
+   - "intention": Concise explanation of the interviewer's intention.
+   - "answer": Concise, interview-ready model answer. Focus on high-impact key concepts, trade-offs, and structured response points. Avoid unnecessarily long essays.
+5. "behavioralQuestions": Exactly ${TARGET_BEHAVIORAL_QUESTION_COUNT} behavioral interview questions:
+   - Cover leadership, teamwork, conflict resolution, time management, problem-solving, and learning from failure.
+   - "question": The behavioral question.
+   - "intention": Concise explanation of the interviewer's intention.
+   - "answer": Concise STAR-method (Situation, Task, Action, Result) outline highlighting key points to cover.
 
-Return valid JSON only. Ensure all details are tailored to this candidate and job. Do not invent employment history or certifications.`
+Return valid JSON only.`
 
-    try {
-        const response = await getAiClient().models.generateContent({
-            model: "gemini-2.5-flash",
-            contents: prompt,
-            config: {
-                responseMimeType: "application/json",
-                responseSchema: zodToJsonSchema(interviewReportSchema)
+    const response = await getAiClient().models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: prompt,
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: zodToJsonSchema(assessmentAndQuestionsSchema),
+            thinkingConfig: {
+                thinkingBudget: 0
             }
-        })
+        }
+    })
 
-        return normalizeInterviewReport(JSON.parse(response.text), fallbackReport)
-    } catch (err) {
-        console.error("AI interview report generation failed. Using fallback strategy:", err.message)
+    return assessmentAndQuestionsSchema.parse(JSON.parse(response.text))
+}
+
+async function generateSkillGapsAndRoadmap({ resume, selfDescription, jobDescription }) {
+    const prompt = `You are an expert career strategist and technical curriculum designer. Analyze the candidate profile against the target job description to identify skill gaps and create a preparation roadmap.
+
+Candidate Resume Text:
+${resume || "Not provided"}
+
+Candidate Self-Description:
+${selfDescription || "Not provided"}
+
+Target Job Description:
+${jobDescription}
+
+Required output:
+1. "skillGaps": Exactly ${TARGET_SKILL_GAP_COUNT} unique, non-repeating missing or weak skills compared to the job description:
+   - "skill": Name of the missing skill or technology.
+   - "severity": "high" (core requirement), "medium" (important supporting), or "low" (nice to have).
+   - "explanation": Concise explanation of why this skill is needed for the target job role.
+   - "interviewImpact": Concise impact of this gap on interview performance or hiring decision.
+   - "estimatedLearningTime": Estimated time to acquire basic proficiency (e.g. '3 days', '1 week').
+   - "evidence": Specific evidence/context from the resume or job description explaining why this gap exists (keep distinct from explanation, do not duplicate text).
+   - "recommendation": Concise, actionable learning action.
+   - "projectSuggestion": A practical, hands-on mini-project concept utilizing this skill.
+   - "resumeKeyword": The specific keyword or phrase to add to resume once learned.
+2. "preparationPlan": Exactly ${TARGET_PREPARATION_DAYS} preparation-plan days (Roadmap):
+   - Day 1-7 (Week 1: Core learning goals & critical gaps), Day 8-14 (Week 2: Hands-on projects), Day 15-21 (Week 3: Deep dive & scenario practice), Day 22-30 (Week 4: Mock interviews & final preparation).
+   - "day": Integer from 1 to 30.
+   - "focus": Concise main focus topic of the day.
+   - "tasks": Array of 2 to 4 concise, actionable tasks for that day.
+3. "certifications": Exactly 5 to 10 recommended professional certifications:
+   - "name": Certification name.
+   - "reason": Concise reason why it improves domain proficiency and ATS credibility.
+   - "officialUrl", "preparationResourceTitle", "preparationResourceUrl": Only include if known with certainty; otherwise omit.
+4. "recommendedProjects": Exactly 5 practical project suggestions:
+   - "title": Project title.
+   - "explanation": Concise explanation of how building it bridges specific skill gaps.
+   - "skillsAddressed": Array of skills addressed.
+
+Return valid JSON only.`
+
+    const response = await getAiClient().models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: prompt,
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: zodToJsonSchema(skillGapsAndRoadmapSchema),
+            thinkingConfig: {
+                thinkingBudget: 0
+            }
+        }
+    })
+
+    return skillGapsAndRoadmapSchema.parse(JSON.parse(response.text))
+}
+
+async function generateInterviewReport({ resume, selfDescription, jobDescription }) {
+    const fallbackReport = buildFallbackInterviewReport(jobDescription, resume, selfDescription)
+
+    const [ assessmentResult, strategyResult ] = await Promise.all([
+        generateAssessmentAndQuestions({ resume, selfDescription, jobDescription }).catch(err => {
+            console.error("AI assessment & questions generation failed (Call 1):", err.message)
+            return null
+        }),
+        generateSkillGapsAndRoadmap({ resume, selfDescription, jobDescription }).catch(err => {
+            console.error("AI skill gaps & roadmap generation failed (Call 2):", err.message)
+            return null
+        })
+    ])
+
+    if (!assessmentResult && !strategyResult) {
+        console.error("Both AI generation calls failed. Returning full fallback report.")
         return fallbackReport
     }
+
+    const mergedReport = {
+        title: assessmentResult?.title || fallbackReport.title,
+        matchScore: assessmentResult?.matchScore ?? fallbackReport.matchScore,
+        professionalSummary: assessmentResult?.professionalSummary || fallbackReport.professionalSummary,
+        technicalQuestions: assessmentResult?.technicalQuestions || fallbackReport.technicalQuestions,
+        behavioralQuestions: assessmentResult?.behavioralQuestions || fallbackReport.behavioralQuestions,
+        skillGaps: strategyResult?.skillGaps || fallbackReport.skillGaps,
+        preparationPlan: strategyResult?.preparationPlan || fallbackReport.preparationPlan,
+        certifications: strategyResult?.certifications || fallbackReport.certifications,
+        recommendedProjects: strategyResult?.recommendedProjects || fallbackReport.recommendedProjects
+    }
+
+    return normalizeInterviewReport(mergedReport, fallbackReport)
 }
+
 
 async function generatePdfFromHtml(htmlContent) {
     let browser
@@ -1353,10 +1446,7 @@ function buildFallbackResumeHtml({ resume, selfDescription, jobDescription, titl
             .filter(gap => gap.skill)
             .slice(0, TARGET_SKILL_GAP_COUNT)
         : []
-    const skillsInProgress = [ ...new Set([
-        ...normalizedGaps.map(gap => gap.resumeKeyword || gap.skill),
-        ...requiredSkills.filter(skill => !candidateText.includes(skill))
-    ].filter(Boolean)) ].slice(0, 12)
+    const skillsInProgress = requiredSkills.filter(skill => !candidateText.includes(skill))
 
     // Parse resume structured details
     const parsed = parseResumeText(resume)
@@ -1365,7 +1455,9 @@ function buildFallbackResumeHtml({ resume, selfDescription, jobDescription, titl
     // Tailored professional summary
     const summary = professionalSummary || `Results-oriented ${resolvedTitle} with demonstrated expertise in ${demonstratedSkills.slice(0, 3).join(", ") || "software design"}. Actively enhancing skills in ${skillsInProgress.slice(0, 3).join(", ") || "advanced technologies"} to deliver scalable, high-performance solutions aligned with the target job requirements.`
 
-    const allSkills = [ ...new Set([ ...parsed.skills, ...demonstratedSkills, ...skillsInProgress ]) ].filter(Boolean)
+    const allSkills = [ ...new Set([ ...parsed.skills, ...demonstratedSkills, ...skillsInProgress ]) ]
+        .map(s => compactText(s))
+        .filter(s => s && s.length > 1 && s.length < 30 && !s.includes(":") && !s.toLowerCase().includes("project") && !s.toLowerCase().includes("metric") && !s.toLowerCase().includes("story") && !s.toLowerCase().includes("evidence"));
 
     // Dynamically build projects based on gaps or JD
     let resumeProjects = []
@@ -1416,7 +1508,17 @@ function buildFallbackResumeHtml({ resume, selfDescription, jobDescription, titl
         const resumeLines = String(resume || "")
             .split(/\r?\n/)
             .map(compactText)
-            .filter(line => line.length > 12)
+            .filter(line => {
+                const lower = line.toLowerCase();
+                return line.length > 15 && 
+                       !lower.includes("@") && 
+                       !lower.includes("skills:") && 
+                       !lower.includes("phone:") && 
+                       !lower.includes("email:") &&
+                       !lower.includes("linkedin.com") &&
+                       !lower.includes("github.com") &&
+                       !/^\d+$/.test(line);
+            })
             .slice(0, 15)
         experienceHtml = `
         <div class="experience-item">
@@ -1533,85 +1635,21 @@ function buildFallbackResumeHtml({ resume, selfDescription, jobDescription, titl
 
 async function generateResumePdf({ resume, selfDescription, jobDescription, title, matchScore, skillGaps = [], preparationPlan = [], professionalSummary, certifications = [], recommendedProjects = [] }) {
     const resolvedTitle = compactText(title) || inferJobTitle(jobDescription)
-    const requiredSkills = extractRequiredSkills(jobDescription)
-    const skillGapSummary = Array.isArray(skillGaps) && skillGaps.length
-        ? skillGaps.map((gap, index) => `${index + 1}. ${gap.skill} (${gap.severity}) - ${gap.explanation || gap.evidence || "Needs role-specific evidence."} Resume keyword: ${gap.resumeKeyword || gap.skill}`).join("\n")
-        : "No saved skill gaps were available."
-    const certSummary = Array.isArray(certifications) && certifications.length
-        ? certifications.map((cert, index) => `${index + 1}. ${cert.name} - ${cert.reason}`).join("\n")
-        : "No specific certifications recommended."
-    const projectSummary = Array.isArray(recommendedProjects) && recommendedProjects.length
-        ? recommendedProjects.map((proj, index) => `${index + 1}. ${proj.title}: ${proj.explanation} (Skills: ${(proj.skillsAddressed || []).join(", ")})`).join("\n")
-        : "No specific projects recommended."
 
-    const prompt = `Generate a polished, professional, single-column, corporate-style, ATS-friendly resume as complete HTML for this candidate, matching the requested layout design.
+    const resumeHtml = buildFallbackResumeHtml({
+        resume,
+        selfDescription,
+        jobDescription,
+        title: resolvedTitle,
+        matchScore,
+        skillGaps,
+        preparationPlan,
+        professionalSummary,
+        certifications,
+        recommendedProjects
+    })
 
-Resume:
-${resume || "Not provided"}
-
-Self Description:
-${selfDescription || "Not provided"}
-
-Job Description:
-${jobDescription}
-
-Target role title:
-${resolvedTitle}
-
-Candidate Professional Summary (use this customized summary for the summary section):
-${professionalSummary || "Generate a highly tailored summary based on target Job Description."}
-
-Recommended Certifications (use this list for the certifications section):
-${certSummary}
-
-Recommended Projects (use this list for the projects section):
-${projectSummary}
-
-Required skills detected from job description (including identified missing skills/gaps):
-${requiredSkills.length ? requiredSkills.join(", ") : "React, TypeScript, Node.js, and other role-relevant technologies."}
-${skillGapSummary ? `Identified Skill Gaps to Integrate: \n${skillGapSummary}` : ""}
-
-Rules:
-- Return JSON only with a single "html" field.
-- The HTML must be complete and valid, with inline CSS only. Do not use external fonts, scripts, images, or remote assets.
-- Keep the PDF professional, clean, and readable, preferably 1-2 pages.
-- Structuring sections:
-  - Header: Center the candidate's name (large, bold, text-transform: uppercase, color: #1e3a8a). Center the contact info (email, phone, location, LinkedIn, GitHub) on the next line. Underneath the header, add a solid dark blue line (border-bottom: 3px solid #1e3a8a).
-  - Sections (PROFESSIONAL SUMMARY, TECHNICAL SKILLS, PROJECTS, EXPERIENCE, EDUCATION, CERTIFICATIONS): All section titles must be uppercase, bold, color: #1e3a8a, with a thin bottom border (border-bottom: 1px solid #cbd5e1).
-  - Professional Summary: Structure this section using the provided candidate Professional Summary. Make sure it targets the requirements and key themes of the target Job Description.
-  - Technical Skills: Arrange skills in a clean 2-column grid or list categorized into Languages, Frameworks/Libraries, Databases, and Developer Tools/Other. Make sure the category labels are bold. Ensure ALL required skills and missing skills from the job description are categorized and listed.
-  - Projects: Create a dedicated projects section containing the recommended projects. Show the project title on the left and active/date on the right, with bullet points explaining how each project helps close the skill gap.
-  - Certifications: Create a dedicated certifications section containing the recommended certifications. List each certification name and a brief description/reason why it was recommended.
-  - Experience, Education: For each entry, use a layout where the role title/degree is bold on the left, and the date range is bold on the right (e.g. using a flex container: display: flex; justify-content: space-between;). Place the company/school name in italics on the line below it. Use clean bullet points for duties and achievements.
-- The layout must be a clean, single-column resume. DO NOT include sidebars, preparation plans, gap analysis tables, or career coaching advice. It must be a clean, final resume suitable for job applications.`
-
-    try {
-        const response = await getAiClient().models.generateContent({
-            model: "gemini-2.5-flash",
-            contents: prompt,
-            config: {
-                responseMimeType: "application/json",
-                responseSchema: zodToJsonSchema(resumePdfSchema)
-            }
-        })
-
-        const jsonContent = JSON.parse(response.text)
-        return await generatePdfFromHtml(jsonContent.html)
-    } catch (err) {
-        console.error("AI resume generation failed. Using fallback resume PDF:", err.message)
-        return await generatePdfFromHtml(buildFallbackResumeHtml({ 
-            resume, 
-            selfDescription, 
-            jobDescription, 
-            title: resolvedTitle, 
-            matchScore, 
-            skillGaps, 
-            preparationPlan,
-            professionalSummary,
-            certifications,
-            recommendedProjects
-        }))
-    }
+    return await generatePdfFromHtml(resumeHtml)
 }
 
 module.exports = { generateInterviewReport, generateResumePdf, generatePdfFromHtml }

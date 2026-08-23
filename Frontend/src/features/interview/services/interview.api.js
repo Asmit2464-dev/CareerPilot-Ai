@@ -57,6 +57,27 @@ export const getAllInterviewReports = async () => {
     return response.data
 }
 
+/**
+ * @description Find current learning resources for a skill gap with Tavily.
+ */
+export const findSkillGapResources = async ({ interviewId, skill }) => {
+    try {
+        const response = await api.post(`/api/interview/${interviewId}/research`, { skill })
+        return response.data.resources || []
+    } catch (error) {
+        throw new Error(error.response?.data?.message || "Failed to find learning resources.", { cause: error })
+    }
+}
+
+export const findReportItemResources = async ({ interviewId, resourceType, itemName }) => {
+    try {
+        const response = await api.post(`/api/interview/${interviewId}/resources`, { resourceType, itemName })
+        return response.data.resources || []
+    } catch (error) {
+        throw new Error(error.response?.data?.message || "Failed to find current resources.", { cause: error })
+    }
+}
+
 
 /**
  * @description Service to generate resume pdf based on user self description, resume content and job description.

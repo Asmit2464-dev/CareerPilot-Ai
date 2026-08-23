@@ -1,5 +1,6 @@
 const pdfParse = require("pdf-parse")
 const { generateInterviewReport, generateResumePdf } = require("../services/ai.service")
+const { findLearningResources, findCertificationResources, findProjectResources } = require("../services/tavily.service")
 const interviewReportModel = require("../models/interviewReport.model")
 
 
@@ -107,6 +108,79 @@ async function getAllInterviewReportsController(req, res) {
     })
 }
 
+/**
+ * @description Find current, external learning resources for a skill gap in an interview report.
+ */
+async function findSkillGapResourcesController(req, res) {
+    const { interviewId } = req.params
+    const skill = String(req.body.skill || "").trim()
+
+    if (!skill || skill.length > 100) {
+        return res.status(400).json({ message: "A valid skill is required." })
+    }
+
+    try {
+        const interviewReport = await interviewReportModel.findOne({ _id: interviewId, user: req.user.id })
+
+        if (!interviewReport) {
+            return res.status(404).json({ message: "Interview report not found." })
+        }
+
+        const isSkillGap = interviewReport.skillGaps.some(gap => gap.skill.toLowerCase() === skill.toLowerCase())
+        if (!isSkillGap) {
+            return res.status(400).json({ message: "This skill is not a gap in the selected interview report." })
+        }
+
+        const resources = await findLearningResources({ skill, role: interviewReport.title })
+        return res.status(200).json({ message: "Learning resources found.", resources })
+    } catch (err) {
+        console.error("Skill resource search error:", err.message)
+        return res.status(err.statusCode || 500).json({
+            message: err.statusCode === 503 ? "Resource search is not configured yet." : "Failed to find learning resources."
+        })
+    }
+}
+
+/**
+ * @description Find current, external resources for a certificate or recommended project.
+ */
+async function findReportItemResourcesController(req, res) {
+    const { interviewId } = req.params
+    const resourceType = String(req.body.resourceType || "").trim()
+    const itemName = String(req.body.itemName || "").trim()
+
+    if (![ "certificate", "project" ].includes(resourceType) || !itemName || itemName.length > 180) {
+        return res.status(400).json({ message: "A valid report item is required." })
+    }
+
+    try {
+        const interviewReport = await interviewReportModel.findOne({ _id: interviewId, user: req.user.id })
+        if (!interviewReport) {
+            return res.status(404).json({ message: "Interview report not found." })
+        }
+
+        const isCertificate = resourceType === "certificate"
+        const reportItem = isCertificate
+            ? interviewReport.certifications.find(certification => certification.name.toLowerCase() === itemName.toLowerCase())
+            : interviewReport.recommendedProjects.find(project => project.title.toLowerCase() === itemName.toLowerCase())
+
+        if (!reportItem) {
+            return res.status(400).json({ message: "This item is not part of the selected interview report." })
+        }
+
+        const resources = isCertificate
+            ? await findCertificationResources({ certification: reportItem.name, role: interviewReport.title })
+            : await findProjectResources({ project: reportItem.title, skills: reportItem.skillsAddressed, role: interviewReport.title })
+
+        return res.status(200).json({ message: "Current resources found.", resources })
+    } catch (err) {
+        console.error("Report item resource search error:", err.message)
+        return res.status(err.statusCode || 500).json({
+            message: err.statusCode === 503 ? "Resource search is not configured yet." : "Failed to find current resources."
+        })
+    }
+}
+
 
 /**
  * @description Controller to generate resume PDF based on user self description, resume and job description.
@@ -155,4 +229,4 @@ async function generateResumePdfController(req, res) {
     }
 }
 
-module.exports = { generateInterViewReportController, getInterviewReportByIdController, getAllInterviewReportsController, generateResumePdfController }
+module.exports = { generateInterViewReportController, getInterviewReportByIdController, getAllInterviewReportsController, findSkillGapResourcesController, findReportItemResourcesController, generateResumePdfController }

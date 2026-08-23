@@ -149,6 +149,7 @@ PORT=3000
 MONGODB_URI=your_mongodb_connection_string
 JWT_SECRET=your_secret_key
 GOOGLE_GENAI_API_KEY=your_gemini_api_key
+TAVILY_API_KEY=your_tavily_api_key
 FRONTEND_URL=http://localhost:5173
 ```
 
@@ -161,6 +162,16 @@ Recommended model:
 ```txt
 gemini-2.5-flash
 ```
+
+---
+
+## Current learning resources
+
+Skill-gap cards include an optional **Find current resources** button. Add `TAVILY_API_KEY` to `Backend/.env` to enable it. The key stays on the backend; the app searches only when the user requests resources for a skill gap.
+
+The Projects and Certifications sections also include on-demand resource buttons. These can return official certification pages, courses, documentation, and relevant tutorial or YouTube links when present in Tavily results.
+
+When Tavily is configured, report generation also uses a hybrid research flow: Gemini selects up to three priority skill gaps, Tavily retrieves current resources for them, and Gemini uses that research to improve certificate and project recommendations. If research is unavailable, the report is still generated from the resume and job description.
 
 ---
 
@@ -200,7 +211,8 @@ GET /api/auth/me
 
 ```http
 POST /api/interview
-GET /api/interview/:id
+GET /api/interview/report/:id
+POST /api/interview/:id/research
 POST /api/interview/resume/pdf/:id
 ```
 

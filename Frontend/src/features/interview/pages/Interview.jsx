@@ -4,6 +4,7 @@ import '../style/skill-gaps.scss'
 import { useInterview } from '../hooks/useInterview.js'
 import { useNavigate, useParams } from 'react-router'
 import SkillGapsCard from './SkillGapsCard.jsx'
+import { findReportItemResources, findSkillGapResources } from '../services/interview.api.js'
 
 
 
@@ -106,6 +107,9 @@ const RoadMapTab = ({ preparationPlan }) => {
 // ── Main Component ────────────────────────────────────────────────────────────
 const Interview = () => {
     const [ activeNav, setActiveNav ] = useState('technical')
+    const [ skillResources, setSkillResources ] = useState({})
+    const [ resourceLoading, setResourceLoading ] = useState({})
+    const [ resourceErrors, setResourceErrors ] = useState({})
     const { report, getReportById, loading, getResumePdf } = useInterview()
     const { interviewId } = useParams()
 
@@ -135,6 +139,51 @@ const Interview = () => {
         report.matchScore >= 75 ? 'Strong match for this role' :
             report.matchScore >= 60 ? 'Good match with some gaps' :
                 'Weak match, focus on critical skill gaps'
+
+    const handleFindResources = async (skill) => {
+        setResourceLoading(current => ({ ...current, [skill]: true }))
+        setResourceErrors(current => ({ ...current, [skill]: '' }))
+
+        try {
+            const resources = await findSkillGapResources({ interviewId, skill })
+            setSkillResources(current => ({ ...current, [skill]: resources }))
+        } catch (error) {
+            setResourceErrors(current => ({ ...current, [skill]: error.message }))
+        } finally {
+            setResourceLoading(current => ({ ...current, [skill]: false }))
+        }
+    }
+
+    const handleFindReportItemResources = async (resourceType, itemName) => {
+        const resourceKey = `${resourceType}:${itemName}`
+        setResourceLoading(current => ({ ...current, [resourceKey]: true }))
+        setResourceErrors(current => ({ ...current, [resourceKey]: '' }))
+
+        try {
+            const resources = await findReportItemResources({ interviewId, resourceType, itemName })
+            setSkillResources(current => ({ ...current, [resourceKey]: resources }))
+        } catch (error) {
+            setResourceErrors(current => ({ ...current, [resourceKey]: error.message }))
+        } finally {
+            setResourceLoading(current => ({ ...current, [resourceKey]: false }))
+        }
+    }
+
+    const renderCurrentResources = (resourceKey) => (
+        <>
+            {resourceErrors[resourceKey] && <p className='report-item-resources__error'>{resourceErrors[resourceKey]}</p>}
+            {skillResources[resourceKey]?.length > 0 && (
+                <ul className='report-item-resources__list'>
+                    {skillResources[resourceKey].map((resource, resourceIndex) => (
+                        <li key={`${resource.url}-${resourceIndex}`}>
+                            <a href={resource.url} target='_blank' rel='noreferrer'>{resource.title}</a>
+                            {resource.content && <p>{resource.content}</p>}
+                        </li>
+                    ))}
+                </ul>
+            )}
+        </>
+    )
 
     return (
         <div className='interview-page'>
@@ -196,7 +245,13 @@ const Interview = () => {
                     )}
 
                     {activeNav === 'gaps' && (
-                        <SkillGapsCard skillGaps={report.skillGaps} />
+                        <SkillGapsCard
+                            skillGaps={report.skillGaps}
+                            skillResources={skillResources}
+                            resourceLoading={resourceLoading}
+                            resourceErrors={resourceErrors}
+                            onFindResources={handleFindResources}
+                        />
                     )}
 
                     {activeNav === 'projects' && (
@@ -218,6 +273,16 @@ const Interview = () => {
                                                 </div>
                                             </div>
                                             <p className='project-card-ui__explanation'><strong>Close the gap:</strong> {proj.explanation}</p>
+                                            <div className='report-item-resources'>
+                                                <button
+                                                    type='button'
+                                                    onClick={() => handleFindReportItemResources('project', proj.title)}
+                                                    disabled={resourceLoading[`project:${proj.title}`]}
+                                                >
+                                                    {resourceLoading[`project:${proj.title}`] ? 'Finding resources...' : 'Find project resources'}
+                                                </button>
+                                                {renderCurrentResources(`project:${proj.title}`)}
+                                            </div>
                                         </div>
                                     ))
                                 ) : (
@@ -239,6 +304,28 @@ const Interview = () => {
                                         <div key={idx} className='certification-card-ui'>
                                             <h3 className='certification-card-ui__name'>{cert.name}</h3>
                                             <p className='certification-card-ui__reason'>{cert.reason}</p>
+                                            {(cert.officialUrl || cert.preparationResourceUrl) && (
+                                                <div className='certification-card-ui__links'>
+                                                    {cert.officialUrl && (
+                                                        <a href={cert.officialUrl} target='_blank' rel='noreferrer'>Official certification details</a>
+                                                    )}
+                                                    {cert.preparationResourceUrl && (
+                                                        <a href={cert.preparationResourceUrl} target='_blank' rel='noreferrer'>
+                                                            {cert.preparationResourceTitle || 'Preparation resource'}
+                                                        </a>
+                                                    )}
+                                                </div>
+                                            )}
+                                            <div className='report-item-resources'>
+                                                <button
+                                                    type='button'
+                                                    onClick={() => handleFindReportItemResources('certificate', cert.name)}
+                                                    disabled={resourceLoading[`certificate:${cert.name}`]}
+                                                >
+                                                    {resourceLoading[`certificate:${cert.name}`] ? 'Finding resources...' : 'Find certificate resources'}
+                                                </button>
+                                                {renderCurrentResources(`certificate:${cert.name}`)}
+                                            </div>
                                         </div>
                                     ))
                                 ) : (

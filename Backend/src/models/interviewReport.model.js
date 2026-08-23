@@ -87,7 +87,10 @@ const preparationPlanSchema = new mongoose.Schema({
 
 const certificationSchema = new mongoose.Schema({
     name: { type: String, required: true },
-    reason: { type: String, required: true }
+    reason: { type: String, required: true },
+    officialUrl: { type: String },
+    preparationResourceTitle: { type: String },
+    preparationResourceUrl: { type: String }
 }, { _id: false })
 
 const recommendedProjectSchema = new mongoose.Schema({

@@ -21,6 +21,20 @@ interviewRouter.post("/", authMiddleware.authUser, upload.single("resume"), inte
  */
 interviewRouter.get("/report/:interviewId", authMiddleware.authUser, interviewController.getInterviewReportByIdController)
 
+/**
+ * @route POST /api/interview/:interviewId/research
+ * @description find current learning resources for a skill gap in an interview report.
+ * @access private
+ */
+interviewRouter.post("/:interviewId/research", authMiddleware.authUser, interviewController.findSkillGapResourcesController)
+
+/**
+ * @route POST /api/interview/:interviewId/resources
+ * @description find current resources for a report certificate or project.
+ * @access private
+ */
+interviewRouter.post("/:interviewId/resources", authMiddleware.authUser, interviewController.findReportItemResourcesController)
+
 
 /**
  * @route GET /api/interview/

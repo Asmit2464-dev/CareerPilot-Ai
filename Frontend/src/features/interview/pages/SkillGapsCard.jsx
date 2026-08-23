@@ -1,6 +1,6 @@
 import '../style/skill-gaps.scss'
 
-const SkillGapsCard = ({ skillGaps }) => {
+const SkillGapsCard = ({ skillGaps, skillResources = {}, resourceLoading = {}, resourceErrors = {}, onFindResources }) => {
     if (!skillGaps || skillGaps.length === 0) {
         return <p className='no-data'>No skill gaps identified</p>
     }
@@ -64,6 +64,30 @@ const SkillGapsCard = ({ skillGaps }) => {
                     <span className='gap-item__keyword'>{gap.resumeKeyword}</span>
                 </div>
             )}
+
+            <div className='gap-item__resources'>
+                <button
+                    type='button'
+                    className='gap-item__resources-button'
+                    onClick={() => onFindResources(gap.skill)}
+                    disabled={resourceLoading[gap.skill]}
+                >
+                    {resourceLoading[gap.skill] ? 'Finding resources...' : 'Find current resources'}
+                </button>
+
+                {resourceErrors[gap.skill] && <p className='gap-item__resources-error'>{resourceErrors[gap.skill]}</p>}
+
+                {skillResources[gap.skill]?.length > 0 && (
+                    <ul className='gap-item__resources-list'>
+                        {skillResources[gap.skill].map((resource, resourceIndex) => (
+                            <li key={`${resource.url}-${resourceIndex}`}>
+                                <a href={resource.url} target='_blank' rel='noreferrer'>{resource.title}</a>
+                                {resource.content && <p>{resource.content}</p>}
+                            </li>
+                        ))}
+                    </ul>
+                )}
+            </div>
         </div>
     )
 
