@@ -508,13 +508,107 @@ const SKILL_PROJECT_MAP = {
     "python": "Create an automated web scraper script or data analysis script with pandas and export results to Excel."
 };
 
+const CANONICAL_SKILL_MAP = {
+    "react": "React",
+    "react.js": "React",
+    "reactjs": "React",
+    "react js": "React",
+    "react.js framework": "React",
+    "node": "Node.js",
+    "node.js": "Node.js",
+    "nodejs": "Node.js",
+    "node js": "Node.js",
+    "express": "Express.js",
+    "express.js": "Express.js",
+    "expressjs": "Express.js",
+    "js": "JavaScript",
+    "javascript": "JavaScript",
+    "vanilla js": "JavaScript",
+    "vanillajs": "JavaScript",
+    "ts": "TypeScript",
+    "typescript": "TypeScript",
+    "postgres": "PostgreSQL",
+    "postgresql": "PostgreSQL",
+    "mongo": "MongoDB",
+    "mongodb": "MongoDB",
+    "k8s": "Kubernetes",
+    "kubernetes": "Kubernetes",
+    "docker": "Docker",
+    "docker containers": "Docker",
+    "docker containerization": "Docker",
+    "aws": "AWS",
+    "amazon web services": "AWS",
+    "aws cloud": "AWS",
+    "gcp": "Google Cloud",
+    "google cloud": "Google Cloud",
+    "google cloud platform": "Google Cloud",
+    "azure": "Azure",
+    "microsoft azure": "Azure",
+    "next": "Next.js",
+    "next.js": "Next.js",
+    "nextjs": "Next.js",
+    "vue": "Vue.js",
+    "vue.js": "Vue.js",
+    "vuejs": "Vue.js",
+    "angular": "Angular",
+    "angular.js": "AngularJS",
+    "angularjs": "AngularJS",
+    "c#": "C#",
+    "c sharp": "C#",
+    "csharp": "C#",
+    "c++": "C++",
+    "cpp": "C++",
+    "golang": "Go",
+    "go lang": "Go",
+    "graphql": "GraphQL",
+    "graph ql": "GraphQL",
+    "rest": "REST APIs",
+    "rest api": "REST APIs",
+    "restful api": "REST APIs",
+    "rest apis": "REST APIs",
+    "restful apis": "REST APIs",
+    "ci/cd": "CI/CD",
+    "cicd": "CI/CD",
+    "ci cd": "CI/CD",
+    "ci / cd": "CI/CD",
+    "tailwind": "Tailwind CSS",
+    "tailwindcss": "Tailwind CSS",
+    "tailwind css": "Tailwind CSS",
+    "sass": "Sass",
+    "scss": "Sass"
+};
+
+function canonicalizeSkillName(skillName) {
+    const raw = compactText(skillName);
+    if (!raw) return "";
+    const lower = raw.toLowerCase();
+    return CANONICAL_SKILL_MAP[lower] || raw;
+}
+
+function getSkillKey(skillName) {
+    const raw = compactText(skillName).toLowerCase();
+    if (!raw) return "";
+
+    // Explicit differentiation for C-family languages
+    if (raw === "c#" || raw === "csharp" || raw === "c sharp") return "csharp";
+    if (raw === "c++" || raw === "cpp") return "cpp";
+    if (raw === "c") return "clanguage";
+
+    // Canonicalize known aliases first
+    const canonical = CANONICAL_SKILL_MAP[raw] ? CANONICAL_SKILL_MAP[raw].toLowerCase() : raw;
+
+    // Normalize: strip non-alphanumeric characters (spaces, punctuation, slashes)
+    return canonical.replace(/[^a-z0-9]/g, "");
+}
+
 function buildSkillGaps(requiredSkills, resume, selfDescription) {
     const candidateText = normalizeText(`${resume || ""} ${selfDescription || ""}`)
     const gaps = requiredSkills
-        .filter(skill => !candidateText.includes(skill))
+        .filter(skill => !candidateText.includes(skill.toLowerCase()))
         .map((skill, index) => {
-            const skillLower = skill.toLowerCase();
-            const project = SKILL_PROJECT_MAP[skillLower] || `Build a practical hands-on project utilizing ${skill} (such as a CRUD application, automated script, or API service) to showcase functional proficiency.`;
+            const canonicalSkill = canonicalizeSkillName(skill);
+            const skillLower = canonicalSkill.toLowerCase();
+            const project = SKILL_PROJECT_MAP[skillLower] || `Build a practical hands-on project utilizing ${canonicalSkill} (such as a CRUD application, automated script, or API service) to showcase functional proficiency.`;
             let severity = "low";
             let estTime = "3 days";
             let impact = "Moderate impact. May hinder standard implementation tasks during live technical interviews.";
@@ -529,18 +623,18 @@ function buildSkillGaps(requiredSkills, resume, selfDescription) {
                 impact = "Medium impact. Important supporting tool/concept; expected to be understood for intermediate architecture and system scaling queries.";
             }
 
-            const explanation = `The job description emphasizes proficiency in ${skill}, but there is no explicit mention or evidence of it in your resume or profile description.`;
+            const explanation = `The job description emphasizes proficiency in ${canonicalSkill}, but there is no explicit mention or evidence of it in your resume or profile description.`;
 
             return {
-                skill,
+                skill: canonicalSkill,
                 severity,
                 explanation,
                 interviewImpact: impact,
                 estimatedLearningTime: estTime,
                 evidence: explanation,
-                recommendation: `Study the core concepts of ${skill} and implement the suggested project to bridge this gap.`,
+                recommendation: `Study the core concepts of ${canonicalSkill} and implement the suggested project to bridge this gap.`,
                 projectSuggestion: project,
-                resumeKeyword: skill
+                resumeKeyword: canonicalSkill
             };
         })
 
@@ -602,9 +696,15 @@ function buildSkillGaps(requiredSkills, resume, selfDescription) {
         }
     ]
 
+    const seenFallbackKeys = new Set();
     return [ ...gaps, ...generalGaps ]
-        .filter((gap, index, allGaps) => allGaps.findIndex(item => item.skill.toLowerCase() === gap.skill.toLowerCase()) === index)
-        .slice(0, TARGET_SKILL_GAP_COUNT)
+        .filter(gap => {
+            const key = getSkillKey(gap.skill);
+            if (!key || seenFallbackKeys.has(key)) return false;
+            seenFallbackKeys.add(key);
+            return true;
+        })
+        .slice(0, TARGET_SKILL_GAP_COUNT);
 }
 
 function buildPreparationPlan(title, requiredSkills, skillGaps = []) {
@@ -960,20 +1060,73 @@ function normalizeQuestion(question, fallbackQuestion) {
 }
 
 function normalizeSkillGap(gap, fallbackGap) {
-    const severity = [ "low", "medium", "high" ].includes(gap?.severity) ? gap.severity : fallbackGap.severity
-    const skill = compactText(gap?.skill) || fallbackGap.skill
+    const rawSkill = compactText(gap?.skill) || fallbackGap?.skill || "Technical Competency"
+    const skill = canonicalizeSkillName(rawSkill)
+    const severity = [ "low", "medium", "high" ].includes(gap?.severity) ? gap.severity : (fallbackGap?.severity || "medium")
+
+    const fallbackExp = fallbackGap?.explanation || `The job description emphasizes proficiency in ${skill}, but there is no explicit mention or evidence of it in your resume or profile description.`
+    const fallbackImp = fallbackGap?.interviewImpact || `Moderate impact. Failing to demonstrate proficiency in ${skill} may weaken your competitiveness.`
+    const fallbackRec = fallbackGap?.recommendation || `Study the core concepts of ${skill} and implement a practical project to bridge this gap.`
+    const fallbackProj = fallbackGap?.projectSuggestion || `Build a practical hands-on project utilizing ${skill} to showcase functional proficiency.`
+    const fallbackKw = fallbackGap?.resumeKeyword || skill
 
     return {
         skill,
         severity,
-        explanation: compactText(gap?.explanation) || fallbackGap.explanation || `The job description emphasizes proficiency in ${skill}, but there is no explicit mention or evidence of it in your resume or profile description.`,
-        interviewImpact: compactText(gap?.interviewImpact) || fallbackGap.interviewImpact || `Moderate impact. Failing to demonstrate proficiency in ${skill} may weaken your competitiveness.`,
-        estimatedLearningTime: compactText(gap?.estimatedLearningTime) || fallbackGap.estimatedLearningTime || `3 days`,
-        evidence: compactText(gap?.evidence) || fallbackGap.evidence || `The job description highlights ${skill}, but the candidate material does not show enough evidence yet.`,
-        recommendation: compactText(gap?.recommendation) || fallbackGap.recommendation || `Add a truthful example, project bullet, or practice note that demonstrates ${skill}.`,
-        projectSuggestion: compactText(gap?.projectSuggestion) || fallbackGap.projectSuggestion || `Build a practical hands-on project utilizing ${skill} to showcase functional proficiency.`,
-        resumeKeyword: compactText(gap?.resumeKeyword) || fallbackGap.resumeKeyword || skill
+        explanation: compactText(gap?.explanation) || fallbackExp,
+        interviewImpact: compactText(gap?.interviewImpact) || fallbackImp,
+        estimatedLearningTime: compactText(gap?.estimatedLearningTime) || fallbackGap?.estimatedLearningTime || "3 days",
+        evidence: compactText(gap?.evidence) || fallbackGap?.evidence || fallbackExp,
+        recommendation: compactText(gap?.recommendation) || fallbackRec,
+        projectSuggestion: compactText(gap?.projectSuggestion) || fallbackProj,
+        resumeKeyword: compactText(gap?.resumeKeyword) || fallbackKw
     }
+}
+
+function normalizeSkillGapsList(candidateGaps, fallbackGaps, targetCount = TARGET_SKILL_GAP_COUNT, maxCount = 25) {
+    const safeCandidateGaps = Array.isArray(candidateGaps) ? candidateGaps : []
+    const safeFallbackGaps = Array.isArray(fallbackGaps) ? fallbackGaps : []
+
+    const normalized = []
+    const seenKeys = new Set()
+
+    // 1. Process candidate gaps from Gemini first
+    for (const gap of safeCandidateGaps) {
+        if (!gap) continue
+        const skillName = canonicalizeSkillName(compactText(gap.skill))
+        const skillKey = getSkillKey(skillName)
+        if (!skillKey || seenKeys.has(skillKey)) {
+            continue // Skip duplicates
+        }
+        seenKeys.add(skillKey)
+
+        const normalizedGap = normalizeSkillGap({ ...gap, skill: skillName }, null)
+        normalized.push(normalizedGap)
+
+        if (normalized.length >= maxCount) break
+    }
+
+    // 2. If fewer unique gaps than targetCount, pad with unique fallback gaps only
+    if (normalized.length < targetCount) {
+        for (const fallbackGap of safeFallbackGaps) {
+            if (normalized.length >= targetCount) break
+            if (!fallbackGap) continue
+
+            const fallbackSkillName = canonicalizeSkillName(compactText(fallbackGap.skill))
+            const fallbackKey = getSkillKey(fallbackSkillName)
+
+            if (!fallbackKey || seenKeys.has(fallbackKey)) {
+                continue // Skip if already present
+            }
+
+            seenKeys.add(fallbackKey)
+            const normalizedFallback = normalizeSkillGap(null, { ...fallbackGap, skill: fallbackSkillName })
+            normalized.push(normalizedFallback)
+        }
+    }
+
+    // Return high-quality unique skill gaps without injecting duplicate padding
+    return normalized
 }
 
 function normalizePreparationDay(day, fallbackDay) {
@@ -1032,7 +1185,7 @@ function normalizeInterviewReport(candidateReport, fallbackReport) {
         professionalSummary: compactText(candidateReport?.professionalSummary) || fallbackReport.professionalSummary,
         technicalQuestions: normalizeList(technicalQuestions, fallbackReport.technicalQuestions, normalizeQuestion, TARGET_TECHNICAL_QUESTION_COUNT, TARGET_TECHNICAL_QUESTION_COUNT),
         behavioralQuestions: normalizeList(behavioralQuestions, fallbackReport.behavioralQuestions, normalizeQuestion, TARGET_BEHAVIORAL_QUESTION_COUNT, TARGET_BEHAVIORAL_QUESTION_COUNT),
-        skillGaps: normalizeList(skillGaps, fallbackReport.skillGaps, normalizeSkillGap, TARGET_SKILL_GAP_COUNT, 25),
+        skillGaps: normalizeSkillGapsList(skillGaps, fallbackReport.skillGaps, TARGET_SKILL_GAP_COUNT, 25),
         preparationPlan: normalizeList(preparationPlan, fallbackReport.preparationPlan, normalizePreparationDay, TARGET_PREPARATION_DAYS, 45),
         certifications: normalizeList(certifications, fallbackReport.certifications, (c, fb) => ({
             name: compactText(c?.name) || fb.name,
@@ -1118,8 +1271,9 @@ Target Job Description:
 ${jobDescription}
 
 Required output:
-1. "skillGaps": Exactly ${TARGET_SKILL_GAP_COUNT} unique, non-repeating missing or weak skills compared to the job description:
-   - "skill": Name of the missing skill or technology.
+1. "skillGaps": Up to ${TARGET_SKILL_GAP_COUNT} unique, non-repeating missing or weak skills compared to the job description:
+   - Every skill gap must represent a genuinely distinct technology, tool, framework, platform, methodology, or domain. Do not create separate entries for different aspects of the same technology. Avoid aliases, duplicates, and sub-skills of an already listed skill.
+   - "skill": Canonical name of the missing skill or technology.
    - "severity": "high" (core requirement), "medium" (important supporting), or "low" (nice to have).
    - "explanation": Concise explanation of why this skill is needed for the target job role.
    - "interviewImpact": Concise impact of this gap on interview performance or hiring decision.
