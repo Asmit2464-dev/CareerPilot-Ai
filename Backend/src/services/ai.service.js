@@ -1129,6 +1129,61 @@ function normalizeSkillGapsList(candidateGaps, fallbackGaps, targetCount = TARGE
     return normalized
 }
 
+function normalizeCertificationsList(candidateCerts, fallbackCerts, targetCount = 6, maxCount = 10) {
+    const safeCandidateCerts = Array.isArray(candidateCerts) ? candidateCerts : []
+    const safeFallbackCerts = Array.isArray(fallbackCerts) ? fallbackCerts : []
+
+    const normalized = []
+    const seenKeys = new Set()
+
+    const getCertKey = (name) => {
+        const raw = compactText(name).toLowerCase()
+        return raw.replace(/[^a-z0-9]/g, "")
+    }
+
+    // 1. Process candidate certifications from Gemini first
+    for (const cert of safeCandidateCerts) {
+        if (!cert) continue
+        const certName = compactText(cert.name)
+        const certKey = getCertKey(certName)
+        if (!certKey || seenKeys.has(certKey)) continue
+        seenKeys.add(certKey)
+
+        normalized.push({
+            name: certName,
+            reason: compactText(cert.reason) || `Recommended professional credential to demonstrate proficiency in core competencies required for this role.`,
+            officialUrl: isValidHttpUrl(cert.officialUrl) ? cert.officialUrl : undefined,
+            preparationResourceTitle: compactText(cert.preparationResourceTitle) || undefined,
+            preparationResourceUrl: isValidHttpUrl(cert.preparationResourceUrl) ? cert.preparationResourceUrl : undefined
+        })
+
+        if (normalized.length >= maxCount) break
+    }
+
+    // 2. If fewer unique certs than targetCount, pad with unique fallback certs only
+    if (normalized.length < targetCount) {
+        for (const fallbackCert of safeFallbackCerts) {
+            if (normalized.length >= targetCount) break
+            if (!fallbackCert) continue
+
+            const fbName = compactText(fallbackCert.name)
+            const fbKey = getCertKey(fbName)
+            if (!fbKey || seenKeys.has(fbKey)) continue
+            seenKeys.add(fbKey)
+
+            normalized.push({
+                name: fbName,
+                reason: compactText(fallbackCert.reason) || `Validates core domain agility and technical depth for this target role.`,
+                officialUrl: isValidHttpUrl(fallbackCert.officialUrl) ? fallbackCert.officialUrl : undefined,
+                preparationResourceTitle: compactText(fallbackCert.preparationResourceTitle) || undefined,
+                preparationResourceUrl: isValidHttpUrl(fallbackCert.preparationResourceUrl) ? fallbackCert.preparationResourceUrl : undefined
+            })
+        }
+    }
+
+    return normalized
+}
+
 function normalizePreparationDay(day, fallbackDay) {
     const tasks = Array.isArray(day?.tasks)
         ? day.tasks.map(compactText).filter(Boolean)
@@ -1187,13 +1242,7 @@ function normalizeInterviewReport(candidateReport, fallbackReport) {
         behavioralQuestions: normalizeList(behavioralQuestions, fallbackReport.behavioralQuestions, normalizeQuestion, TARGET_BEHAVIORAL_QUESTION_COUNT, TARGET_BEHAVIORAL_QUESTION_COUNT),
         skillGaps: normalizeSkillGapsList(skillGaps, fallbackReport.skillGaps, TARGET_SKILL_GAP_COUNT, 25),
         preparationPlan: normalizeList(preparationPlan, fallbackReport.preparationPlan, normalizePreparationDay, TARGET_PREPARATION_DAYS, 45),
-        certifications: normalizeList(certifications, fallbackReport.certifications, (c, fb) => ({
-            name: compactText(c?.name) || fb.name,
-            reason: compactText(c?.reason) || fb.reason,
-            officialUrl: isValidHttpUrl(c?.officialUrl) ? c.officialUrl : undefined,
-            preparationResourceTitle: compactText(c?.preparationResourceTitle) || undefined,
-            preparationResourceUrl: isValidHttpUrl(c?.preparationResourceUrl) ? c.preparationResourceUrl : undefined
-        }), certifications.length || fallbackReport.certifications.length, 12),
+        certifications: normalizeCertificationsList(certifications, fallbackReport.certifications, 6, 10),
         recommendedProjects: normalizeList(recommendedProjects, fallbackReport.recommendedProjects, (p, fb) => ({
             title: compactText(p?.title) || fb.title,
             explanation: compactText(p?.explanation) || fb.explanation,
@@ -1287,9 +1336,10 @@ Required output:
    - "day": Integer from 1 to 30.
    - "focus": Concise main focus topic of the day.
    - "tasks": Array of 2 to 4 concise, actionable tasks for that day.
-3. "certifications": Exactly 5 to 10 recommended professional certifications:
-   - "name": Certification name.
-   - "reason": Concise reason why it improves domain proficiency and ATS credibility.
+3. "certifications": Exactly 5 to 8 recommended professional certifications tailored directly to the missing skills and target job requirements:
+   - Must be distinct credentials (do NOT output duplicate or overlapping certifications).
+   - "name": Official certification title.
+   - "reason": Concise reason why it improves domain proficiency and ATS credibility for this specific role.
    - "officialUrl", "preparationResourceTitle", "preparationResourceUrl": Only include if known with certainty; otherwise omit.
 4. "recommendedProjects": Exactly 5 practical project suggestions:
    - "title": Project title.
@@ -1359,13 +1409,27 @@ async function generatePdfFromHtml(htmlContent) {
             const chromePath = findChromeOnWindows()
             if (chromePath) {
                 executablePath = chromePath
-                launchArgs = [ "--no-sandbox", "--disable-setuid-sandbox" ]
+                launchArgs = [
+                    "--no-sandbox",
+                    "--disable-setuid-sandbox",
+                    "--disable-dev-shm-usage",
+                    "--disable-gpu",
+                    "--no-zygote"
+                ]
             } else {
                 throw new Error("Google Chrome not found on Windows in standard paths.")
             }
         } else {
             executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || process.env.GOOGLE_CHROME_BIN || await chromium.executablePath()
-            launchArgs = [ ...chromium.args, "--no-sandbox", "--disable-setuid-sandbox" ]
+            launchArgs = [
+                ...chromium.args,
+                "--no-sandbox",
+                "--disable-setuid-sandbox",
+                "--disable-dev-shm-usage",
+                "--disable-gpu",
+                "--single-process",
+                "--no-zygote"
+            ]
         }
 
         browser = await puppeteer.launch({
@@ -1399,29 +1463,35 @@ async function generatePdfFromHtml(htmlContent) {
     }
 }
 
-function inferCertifications(jobDescription, requiredSkills, limit = 3) {
+function inferCertifications(jobDescription, requiredSkills, limit = 6) {
     const text = String(jobDescription || "").toLowerCase()
     const certs = []
-    if (text.includes("aws")) certs.push({ name: "AWS Certified Developer - Associate", reason: "Demonstrates cloud computing architecture, storage, and serverless implementation skills." })
-    if (text.includes("kubernetes") || text.includes("docker")) certs.push({ name: "Certified Kubernetes Administrator (CKA)", reason: "Validates proficiency in container orchestration, microservices deployment, and scaling." })
+
+    if (text.includes("aws")) certs.push({ name: "AWS Certified Solutions Architect / Developer - Associate", reason: "Demonstrates cloud computing architecture, storage, and serverless implementation skills." })
+    if (text.includes("azure")) certs.push({ name: "Microsoft Certified: Azure Developer Associate", reason: "Validates cloud compute, storage, security, and microservices integration on Microsoft Azure." })
+    if (text.includes("gcp") || text.includes("google cloud")) certs.push({ name: "Google Cloud Associate Cloud Engineer", reason: "Proves proficiency in deploying applications, monitoring operations, and managing enterprise cloud projects." })
+    if (text.includes("kubernetes") || text.includes("docker") || text.includes("container")) certs.push({ name: "Certified Kubernetes Administrator (CKA)", reason: "Validates proficiency in container orchestration, microservices deployment, and scaling." })
+    if (text.includes("react") || text.includes("next.js") || text.includes("frontend") || text.includes("javascript")) certs.push({ name: "Meta Front-End Developer Professional Certificate", reason: "Proves advanced UI state management, performance profiling, and component architecture." })
+    if (text.includes("node") || text.includes("backend") || text.includes("express")) certs.push({ name: "Node.js Application Developer (JSNAD)", reason: "Ensures proficiency in event-driven asynchronous microservices and API development." })
+    if (text.includes("typescript")) certs.push({ name: "Microsoft Certified: TypeScript & Modern Web Development", reason: "Affirms type safety, advanced generics, and enterprise architecture proficiency." })
+    if (text.includes("python") || text.includes("machine learning") || text.includes("data")) certs.push({ name: "Google Professional Data Engineer", reason: "Establishes expertise in database scaling, analytics pipelines, and data storage design." })
+    if (text.includes("security") || text.includes("auth") || text.includes("jwt")) certs.push({ name: "CompTIA Security+ or CISSP", reason: "Confirms foundational security compliance, authentication, and secure coding practices." })
+    if (text.includes("ci/cd") || text.includes("devops") || text.includes("terraform")) certs.push({ name: "HashiCorp Certified Terraform Associate", reason: "Proves familiarity with infrastructure-as-code and automated CI/CD deployment pipelines." })
+    if (text.includes("sql") || text.includes("postgres") || text.includes("database") || text.includes("mongodb")) certs.push({ name: "PostgreSQL Professional / MongoDB Certified Associate", reason: "Validates advanced indexing, query tuning, relational modeling, and data persistence design." })
     if (text.includes("scrum") || text.includes("agile")) certs.push({ name: "Professional Scrum Master (PSM I)", reason: "Affirms understanding of agile methodologies, iteration structures, and team collaboration." })
-    if (text.includes("security")) certs.push({ name: "CompTIA Security+ or CISSP", reason: "Confirms foundational security compliance, authentication, and secure coding practices." })
-    if (text.includes("react") || text.includes("next.js") || text.includes("javascript")) certs.push({ name: "Meta Front-End Developer Professional Certificate", reason: "Proves advanced UI state management, performance profiling, and component architecture." })
-    if (text.includes("node") || text.includes("backend")) certs.push({ name: "Node.js Application Developer (JSNAD)", reason: "Ensures proficiency in event-driven asynchronous microservices and API development." })
-    if (text.includes("python") || text.includes("machine learning") || text.includes("data science")) certs.push({ name: "Google Professional Data Engineer", reason: "Establishes expertise in database scaling, analytics pipelines, and data storage design." })
 
     if (certs.length < limit) {
         certs.push({ name: "Advanced Software Engineering Certification", reason: "Validates core software engineering principles, design patterns, and testing discipline." })
         certs.push({ name: "Certified Professional Software Developer (CPSD)", reason: "Confirms technical agility, implementation cleanliness, and developer efficiency." })
         certs.push({ name: "Oracle Certified Professional Java Developer", reason: "Shows foundational programming rigor, object-oriented concepts, and concurrency control." })
-        certs.push({ name: "HashiCorp Certified Terraform Associate", reason: "Proves familiarity with infrastructure-as-code and cloud deployment automation." })
     }
-    
+
     const unique = [];
     const seen = new Set();
     for (const cert of certs) {
-        if (!seen.has(cert.name)) {
-            seen.add(cert.name);
+        const key = cert.name.toLowerCase().replace(/[^a-z0-9]/g, "");
+        if (!seen.has(key)) {
+            seen.add(key);
             unique.push(cert);
         }
     }
@@ -1718,30 +1788,82 @@ function buildFallbackResumeHtml({ resume, selfDescription, jobDescription, titl
     <meta charset="UTF-8">
     <style>
         * { box-sizing: border-box; }
-        body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #374151; line-height: 1.5; margin: 0; background: #ffffff; font-size: 11px; }
-        .container { max-width: 800px; margin: 0 auto; padding: 20px; }
-        h1 { margin: 0 0 5px; font-size: 24px; color: #1e3a8a; text-align: center; font-weight: bold; text-transform: uppercase; letter-spacing: 0.05em; }
-        .contact-info { text-align: center; color: #4b5563; font-size: 10px; margin-bottom: 15px; line-height: 1.6; }
-        .contact-info a { color: #4b5563; text-decoration: none; }
-        .header-line { border-bottom: 3px solid #1e3a8a; margin-bottom: 20px; }
-        h2 { margin: 18px 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: #1e3a8a; font-weight: bold; border-bottom: 1px solid #cbd5e1; padding-bottom: 3px; }
-        p { margin: 0 0 8px; text-align: justify; }
-        .skills-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 15px; margin-top: 5px; }
-        .skill-item { font-size: 10.5px; }
-        .skill-item strong { color: #1e3a8a; }
-        .experience-item { margin-bottom: 12px; }
-        .item-header { display: flex; justify-content: space-between; font-weight: bold; font-size: 11px; color: #111827; }
-        .item-sub { font-style: italic; color: #4b5563; font-size: 10px; margin-bottom: 3px; }
-        ul { margin: 4px 0 0; padding-left: 15px; }
-        li { margin-bottom: 3px; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; 
+            color: #1f2937; 
+            line-height: 1.45; 
+            margin: 0; 
+            background: #ffffff; 
+            font-size: 10.5px; 
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        .container { max-width: 800px; margin: 0 auto; padding: 12px 18px; }
+        h1 { 
+            margin: 0 0 4px; 
+            font-size: 22px; 
+            color: #1e3a8a; 
+            text-align: center; 
+            font-weight: 700; 
+            text-transform: uppercase; 
+            letter-spacing: 0.05em; 
+        }
+        .contact-info { 
+            text-align: center; 
+            color: #4b5563; 
+            font-size: 9.5px; 
+            margin-bottom: 12px; 
+            line-height: 1.5; 
+        }
+        .contact-info a { color: #1e3a8a; text-decoration: none; font-weight: 500; }
+        .header-line { border-bottom: 2.5px solid #1e3a8a; margin-bottom: 12px; }
+        h2 { 
+            margin: 12px 0 5px; 
+            font-size: 11px; 
+            text-transform: uppercase; 
+            letter-spacing: 0.05em; 
+            color: #1e3a8a; 
+            font-weight: 700; 
+            border-bottom: 1px solid #cbd5e1; 
+            padding-bottom: 2px; 
+        }
+        p { margin: 0 0 6px; text-align: justify; line-height: 1.45; }
+        .skills-grid { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 5px 14px; 
+            margin-top: 3px; 
+            margin-bottom: 6px; 
+        }
+        .skill-item { font-size: 10px; line-height: 1.4; }
+        .skill-item strong { color: #1e3a8a; font-weight: 600; }
+        .experience-item { margin-bottom: 8px; page-break-inside: avoid; }
+        .item-header { 
+            display: flex; 
+            justify-content: space-between; 
+            font-weight: 700; 
+            font-size: 10.5px; 
+            color: #111827; 
+        }
+        .item-sub { 
+            font-style: italic; 
+            color: #4b5563; 
+            font-size: 9.5px; 
+            margin-bottom: 2px; 
+        }
+        ul { margin: 2px 0 0; padding-left: 15px; }
+        li { margin-bottom: 2px; line-height: 1.4; }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>${escapeHtml(candidateName)}</h1>
         <div class="contact-info">
-            ${escapeHtml(resolvedTitle)} | Email: ${escapeHtml(parsed.email)} | Phone: ${escapeHtml(parsed.phone)} | Location: ${escapeHtml(parsed.location)}<br>
-            LinkedIn: <a href="https://${escapeHtml(linkedinLink.replace(/^https?:\/\//, ""))}" target="_blank">${escapeHtml(linkedinLink)}</a> | 
+            <strong>${escapeHtml(resolvedTitle)}</strong> &nbsp;|&nbsp; 
+            Email: ${escapeHtml(parsed.email)} &nbsp;|&nbsp; 
+            Phone: ${escapeHtml(parsed.phone)} &nbsp;|&nbsp; 
+            Location: ${escapeHtml(parsed.location)}<br>
+            LinkedIn: <a href="https://${escapeHtml(linkedinLink.replace(/^https?:\/\//, ""))}" target="_blank">${escapeHtml(linkedinLink)}</a> &nbsp;|&nbsp; 
             GitHub: <a href="https://${escapeHtml(githubLink.replace(/^https?:\/\//, ""))}" target="_blank">${escapeHtml(githubLink)}</a>
         </div>
         <div class="header-line"></div>
@@ -1760,7 +1882,7 @@ function buildFallbackResumeHtml({ resume, selfDescription, jobDescription, titl
         <div class="experience-item">
             <div class="item-header">
                 <span>${escapeHtml(proj.title)}</span>
-                <span>Active</span>
+                <span style="font-weight: 500; color: #4b5563;">Active</span>
             </div>
             <div class="item-sub">Technical Demonstration Project</div>
             <ul>
@@ -1777,7 +1899,7 @@ function buildFallbackResumeHtml({ resume, selfDescription, jobDescription, titl
         ${educationHtml}
 
         <h2>Certifications</h2>
-        <div class="experience-item" style="margin-top: 6px;">
+        <div class="experience-item" style="margin-top: 4px;">
             <ul>
                 ${inferredCerts.map(cert => `<li><strong>${escapeHtml(cert.name)}</strong> - ${escapeHtml(cert.reason)}</li>`).join("")}
             </ul>
