@@ -1,6 +1,5 @@
 const { GoogleGenAI } = require("@google/genai")
 const { z } = require("zod")
-const { zodToJsonSchema } = require("zod-to-json-schema")
 const chromium = require("@sparticuz/chromium")
 const puppeteer = require("puppeteer-core")
 const fs = require("fs")
@@ -86,6 +85,213 @@ const skillGapsAndRoadmapSchema = z.object({
         skillsAddressed: z.array(z.string()).describe("The list of missing skills addressed by this project")
     })).describe("Exactly 5 recommended practical projects to bridge skill gaps")
 })
+
+const assessmentAndQuestionsJsonSchema = {
+    type: "object",
+    properties: {
+        title: {
+            type: "string",
+            description: "The exact target job title from the job description"
+        },
+        matchScore: {
+            type: "number",
+            description: "A score between 0 and 100 indicating how well the candidate's profile matches the job description"
+        },
+        professionalSummary: {
+            type: "string",
+            description: "A concise, ATS-friendly professional summary tailored to the target job description"
+        },
+        technicalQuestions: {
+            type: "array",
+            description: "Technical interview questions tailored to the job",
+            items: {
+                type: "object",
+                properties: {
+                    question: {
+                        type: "string",
+                        description: "The technical question that can be asked in the interview"
+                    },
+                    intention: {
+                        type: "string",
+                        description: "The interviewer's intention behind asking this question"
+                    },
+                    answer: {
+                        type: "string",
+                        description: "Concise, high-impact model answer highlighting essential points and technical concepts"
+                    }
+                },
+                required: [ "question", "intention", "answer" ]
+            }
+        },
+        behavioralQuestions: {
+            type: "array",
+            description: "Behavioral interview questions tailored to the job",
+            items: {
+                type: "object",
+                properties: {
+                    question: {
+                        type: "string",
+                        description: "The behavioral question that can be asked in the interview"
+                    },
+                    intention: {
+                        type: "string",
+                        description: "The interviewer's intention behind asking this question"
+                    },
+                    answer: {
+                        type: "string",
+                        description: "Concise STAR-method response outline with key points to cover"
+                    }
+                },
+                required: [ "question", "intention", "answer" ]
+            }
+        }
+    },
+    required: [ "title", "matchScore", "professionalSummary", "technicalQuestions", "behavioralQuestions" ]
+}
+
+const skillGapsAndRoadmapJsonSchema = {
+    type: "object",
+    properties: {
+        skillGaps: {
+            type: "array",
+            description: "Unique missing or weak skills compared with the job description",
+            items: {
+                type: "object",
+                properties: {
+                    skill: {
+                        type: "string",
+                        description: "The name of the missing or weak skill (must be unique, do not repeat)"
+                    },
+                    severity: {
+                        type: "string",
+                        enum: [ "low", "medium", "high" ],
+                        description: "The severity of this skill gap"
+                    },
+                    explanation: {
+                        type: "string",
+                        description: "Concise explanation of why this is a gap based on comparing the candidate profile and job requirements"
+                    },
+                    interviewImpact: {
+                        type: "string",
+                        description: "Concise description of how this skill gap impacts interview performance or hiring decision"
+                    },
+                    estimatedLearningTime: {
+                        type: "string",
+                        description: "Estimated time needed to learn this skill (e.g. '3 days', '1 week')"
+                    },
+                    evidence: {
+                        type: "string",
+                        description: "Specific evidence/context from the resume or job description explaining why this gap exists"
+                    },
+                    recommendation: {
+                        type: "string",
+                        description: "Concise action plan to close this gap"
+                    },
+                    projectSuggestion: {
+                        type: "string",
+                        description: "A practical hands-on mini-project suggestion utilizing this skill"
+                    },
+                    resumeKeyword: {
+                        type: "string",
+                        description: "The exact resume keyword or phrase connected to this gap"
+                    }
+                },
+                required: [
+                    "skill",
+                    "severity",
+                    "explanation",
+                    "interviewImpact",
+                    "estimatedLearningTime",
+                    "evidence",
+                    "recommendation",
+                    "projectSuggestion",
+                    "resumeKeyword"
+                ]
+            }
+        },
+        preparationPlan: {
+            type: "array",
+            description: "A 30-day interview preparation plan",
+            items: {
+                type: "object",
+                properties: {
+                    day: {
+                        type: "number",
+                        description: "The day number in the preparation plan, starting from 1 to 30"
+                    },
+                    focus: {
+                        type: "string",
+                        description: "The main focus of this day in the preparation plan"
+                    },
+                    tasks: {
+                        type: "array",
+                        description: "2 to 4 concise, actionable tasks to complete on this day",
+                        items: {
+                            type: "string"
+                        }
+                    }
+                },
+                required: [ "day", "focus", "tasks" ]
+            }
+        },
+        certifications: {
+            type: "array",
+            description: "5 to 10 recommended certifications",
+            items: {
+                type: "object",
+                properties: {
+                    name: {
+                        type: "string",
+                        description: "The name of the professional certification"
+                    },
+                    reason: {
+                        type: "string",
+                        description: "Concise reason why this certification is recommended based on role and skill gaps"
+                    },
+                    officialUrl: {
+                        type: "string",
+                        description: "The official certification page URL if known with certainty"
+                    },
+                    preparationResourceTitle: {
+                        type: "string",
+                        description: "The title of a preparation resource if known with certainty"
+                    },
+                    preparationResourceUrl: {
+                        type: "string",
+                        description: "The URL of the preparation resource if known with certainty"
+                    }
+                },
+                required: [ "name", "reason" ]
+            }
+        },
+        recommendedProjects: {
+            type: "array",
+            description: "Exactly 5 recommended practical projects to bridge skill gaps",
+            items: {
+                type: "object",
+                properties: {
+                    title: {
+                        type: "string",
+                        description: "The title of the practical project"
+                    },
+                    explanation: {
+                        type: "string",
+                        description: "Concise explanation of how this project helps close specific skill gaps"
+                    },
+                    skillsAddressed: {
+                        type: "array",
+                        description: "The list of missing skills addressed by this project",
+                        items: {
+                            type: "string"
+                        }
+                    }
+                },
+                required: [ "title", "explanation", "skillsAddressed" ]
+            }
+        }
+    },
+    required: [ "skillGaps", "preparationPlan", "certifications", "recommendedProjects" ]
+}
 
 
 
@@ -1297,7 +1503,7 @@ Return valid JSON only.`
         contents: prompt,
         config: {
             responseMimeType: "application/json",
-            responseSchema: zodToJsonSchema(assessmentAndQuestionsSchema),
+            responseSchema: assessmentAndQuestionsJsonSchema,
             thinkingConfig: {
                 thinkingBudget: 0
             }
@@ -1353,7 +1559,7 @@ Return valid JSON only.`
         contents: prompt,
         config: {
             responseMimeType: "application/json",
-            responseSchema: zodToJsonSchema(skillGapsAndRoadmapSchema),
+            responseSchema: skillGapsAndRoadmapJsonSchema,
             thinkingConfig: {
                 thinkingBudget: 0
             }
